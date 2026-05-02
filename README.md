@@ -8,12 +8,12 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 ## Current version: v0
 
-## JUICE-MAN (official releases)
+## JUICE-MAN (official releases, every 7 days starting May 10th)
 
 | Version | Author | Play | Description |
 |---------|--------|------|-------------|
 | **v0** | brycecovert | [juice_man_v0.html](https://brycecovert.github.io/JUICE-MAN/juice_man_v0.html) | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
-| **v1** | ? | — | Coming May 17, 2026 — elected from open PRs. |
+| **v1** | ? | — | Coming May 10, 2026 — elected from open PRs. |
 
 ## JUICE-MAN forks
 
