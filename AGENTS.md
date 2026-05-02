@@ -2,21 +2,23 @@
 
 ## Project
 
-Single-file Pac-Man variant (`juice_man.html`). Canvas-based, no dependencies. Space-themed aesthetic with neon holographic walls, warp stars, planets, and aggressive particle effects.
+Single-file Pac-Man variant (`juice_man.html`). Canvas-based, no dependencies. Forked from brycecovert/JUICE-MAN v0 (clean baseline with no visual effects). All juice must be additive on top of v0.
 
 ## Competitive Format
 
-JUICE-MAN is a democratic, collaborative competition to create the juiciest Pac-Man that ever existed. Each week, a new "Juice-Man" is elected via poll of open PRs.
+JUICE-MAN is a democratic, collaborative competition to create the juiciest Pac-Man that ever existed. Each week, a new "JUICE-MAN" is elected via poll of open PRs.
 
 **Start date:** May 10, 2026
 **End date:** When no further submissions are made
 
 ### PR Rules
 
-1. **Make it juicer** — Every PR must make JUICE-MAN more juicy than before.
-2. **Single prompt** — Each PR must come from a single prompt applied to the current `juice_man.html`. The prompt is limited to 1,000 tokens.
-3. **Build on prior work** — PRs must build on the current `juice_man.html`. Never a full rewrite.
-4. **Single file** — `juice_man.html` is the only file. No external dependencies.
+1. **Make it juicer** — Every PR must make JUICE-MAN more visually intense than before.
+2. **Single prompt** — Each PR comes from a single prompt (max 300 tokens) applied to the current `juice_man.html`.
+3. **Additive only** — Build on prior work. No rewrites, no removals.
+4. **Single file** — Everything lives in `juice_man.html`. No dependencies.
+5. **No mechanic changes** — The game has to play as if the same inputs would result in the same output.
+6. **Spirit of the law** — The rules are easy to game. But that won't be fun.
 
 ## Core Rule: Additive Juice Only
 
@@ -39,23 +41,11 @@ Juice is any effect that makes the game feel more intense, reactive, or alive. C
 
 ## Existing Juice Inventory (Do Not Remove)
 
-The game already has these effects — build on them, don't replace them:
+v0 is a clean baseline with no visual effects. Any juice added on top must be tracked here and never removed by subsequent PRs.
 
 | Layer | Effects |
 |-------|---------|
-| Background | Deep space gradient, warp stars (250, depth-layered), 4 planets with rings/features, space nebulae (6), shooting stars, engine particles |
-| Maze | Holographic energy walls (multi-frequency noise pulsation, scan lines, spike bursts), spaceship floor grid, hull edge glow with corner accents, energy door with sparkle |
-| Pellets | Energy cell pellets with glow/core, warp core power pellets with orbiting dots/rings, alien artifact fruit with rotating rings |
-| Pac-Man | Rainbow trail (pmTrail + rainbowParts), mouth animation, eye, outer glow, inner highlight, death animation |
-| Ghosts | Trail particles, body glow, inner highlight, animated wavy feet, scared face with zigzag mouth, eye tracking, spirit particles on eat |
-| Particles | Main particle system (1500 max), burst/ringBurst/rainbowBurst helpers, spark type, gravity |
-| FX overlays | Screen shake (shakeT/shakeI), white flash (flashT), shockwaves (multi-ring), lightning bolts, ambient fireworks, nebula clouds, wall energy flow, pixel rain, electric arcs (ghost-to-pacman proximity), floating text, score popups, edge glow (rainbow), CRT scanlines |
-| Power mode | Blue screen tint, red warning vignette when expiring, HUD power bar with pulse |
-| Overdrive | Red wash + vignette, scan bars, thick border flash, "OVERDRIVE" text with scale pulse, timer bar, continuous random flash/shake, red edge particles |
-| Ambient | Auto-spawning lightning strikes and fireworks every 2-4 seconds |
-| HUD | Score, high score, level, combo indicator, lives, power timer bar, neon separator line |
-| Screens | Title (rainbow title glow, animated particles, pacman/ghost animation), game over (red vignette, high score stars), paused (scanlines), level complete (celebration particles) |
-| Mobile | Touch swipe controls, pause tap, D-pad arrows |
+| — | *(none yet — v0 is the starting point)* |
 
 
 ## Code Conventions
@@ -69,10 +59,10 @@ The game already has these effects — build on them, don't replace them:
 - **No comments**: Do not add code comments. The code is dense by design.
 - **State machine**: Game states are `title`, `playing`, `paused`, `lifeLost`, `levelComplete`, `gameOver`. New effects should check `state` where relevant.
 - **Integration points**:
-  - New update logic goes in `update()` at line ~1758
-  - New draw logic goes in `draw()` at line ~1770, ordered back-to-front
-  - New init logic goes in `resize()` or a dedicated init called from `resize()`
-  - New state arrays declared near top with other arrays (line ~61-96)
+  - New update logic goes in `update()` at line ~657
+  - New draw logic goes in `draw()` at line ~666, ordered back-to-front
+  - New init logic goes in `resize()` at line ~69 or a dedicated init called from `resize()`
+  - New state arrays declared near top with other arrays (line ~58-66)
 
 ## Anti-Goals
 
