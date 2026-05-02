@@ -402,15 +402,66 @@ function nextLevel(){
 }
 
 /* drawing */
+function drawWavyWall(r,c,x,y,s){
+  const t=globalTime;
+  const waveAmp=1.5+Math.sin(t*1.2+c*0.7+r*0.5)*1;
+  const segs=6;
+  ctx.strokeStyle='#0066cc';
+  ctx.lineWidth=2;
+  ctx.lineCap='round';
+  const neighbors=[
+    {dr:-1,dc:0,side:'top'},
+    {dr:1,dc:0,side:'bottom'},
+    {dr:0,dc:-1,side:'left'},
+    {dr:0,dc:1,side:'right'}
+  ];
+  for(const n of neighbors){
+    const nr=r+n.dr,nc=c+n.dc;
+    let isEdge=false;
+    if(nr<0||nr>=ROWS||nc<0||nc>=COLS) isEdge=true;
+    else if(maze[nr][nc]!==T_WALL) isEdge=true;
+    if(!isEdge) continue;
+    ctx.beginPath();
+    if(n.side==='top'){
+      for(let i=0;i<=segs;i++){
+        const frac=i/segs;
+        const px=x+frac*s;
+        const py=y+Math.sin(frac*Math.PI*3+t*2+c+r)*waveAmp;
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+    }else if(n.side==='bottom'){
+      for(let i=0;i<=segs;i++){
+        const frac=i/segs;
+        const px=x+frac*s;
+        const py=y+s+Math.sin(frac*Math.PI*3+t*2+c+r+1)*waveAmp;
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+    }else if(n.side==='left'){
+      for(let i=0;i<=segs;i++){
+        const frac=i/segs;
+        const px=x+Math.sin(frac*Math.PI*3+t*2+c+r+2)*waveAmp;
+        const py=y+frac*s;
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+    }else{
+      for(let i=0;i<=segs;i++){
+        const frac=i/segs;
+        const px=x+s+Math.sin(frac*Math.PI*3+t*2+c+r+3)*waveAmp;
+        const py=y+frac*s;
+        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+      }
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle='rgba(0,30,60,0.5)';
+  ctx.fillRect(x+2,y+2,s-4,s-4);
+}
 function drawMaze(){
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const cell=maze[r][c],x=tx(c),y=ty(r),cx2=x+ts/2,cy2=y+ts/2,s=ts;
       if(cell===T_WALL){
-        ctx.fillStyle='#1a1aff';
-        ctx.fillRect(x,y,s,s);
-        ctx.fillStyle='#000';
-        ctx.fillRect(x+2,y+2,s-4,s-4);
+        drawWavyWall(r,c,x,y,s);
       }
       if(cell===T_DOOR){
         ctx.fillStyle='#ffb8ff';
