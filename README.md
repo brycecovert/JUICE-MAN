@@ -4,7 +4,7 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 ![A potential JUICE-MAN from a parallel universe](juice-man-embed.gif)
 
-> This is not JUICE-MAN. It's inspiration from a parallel universe. Play the inspiration: [juice_man.html](https://brycecovert.github.io/JUICE-MAN/juice_man.html)
+> This is not JUICE-MAN. It's inspiration from a parallel universe. Play the inspiration: [juice_man_inspiration.html](https://brycecovert.github.io/JUICE-MAN/juice_man_inspiration.html)
 
 ## Current version: v0
 
@@ -23,7 +23,7 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 ### Current
 
-The `juice_man.html` file is the living, evolving version of the game. It's not the final release — it's the canvas. Each week, the elected Juice-Man adds more juice on top of whatever came before.
+The `juice_man.html` file is the living, evolving version of the game — built from v0. It's not the final release — it's the canvas. Each week, the elected JUICE-MAN adds more juice on top of whatever came before. The inspiration file (`juice_man_inspiration.html`) is a parallel universe version and not part of the official competition.
 
 ## How It Works
 
