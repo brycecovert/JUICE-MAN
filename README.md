@@ -19,6 +19,7 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 | Fork | Author | Play | Description |
 |------|--------|------|-------------|
+| Inspiration | brycecovert | [juice_man_inspiration.html](https://brycecovert.github.io/JUICE-MAN/juice_man_inspiration.html) | Parallel universe version — space theme, neon walls, particles, and aggressive FX. Not part of the official competition. |
 | *(yours?)* | — | — | Fork this repo, make it juicier, and open a PR! |
 
 ### Current
