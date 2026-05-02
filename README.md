@@ -26,10 +26,10 @@ Each week, a new "Juice-Man" is elected via poll of open PRs. The winning PR bec
 ## PR Rules
 
 1. **Make it juicer** — Every PR must make JUICE-MAN more visually intense than before.
-2. **Single prompt** — Each PR comes from a single prompt (max 1,000 tokens) applied to the current `juice_man.html`.
+2. **Single prompt** — Each PR comes from a single prompt (max 300 tokens) applied to the current `juice_man.html`.
 3. **Additive only** — Build on prior work. No rewrites, no removals.
 4. **Single file** — Everything lives in `juice_man.html`. No dependencies.
-5. **Spirit of the law** - I haven't thought of many edge cases for rules
+5. **Spirit of the law** - I haven't thought of many edge cases for rules, and they're easy to game. But that won't be fun.
 
 ## Release Log
 
