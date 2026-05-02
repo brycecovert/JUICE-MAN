@@ -75,6 +75,8 @@ const MAX_WAKE=200;
 const surferRipples=[];
 const MAX_RIPPLES=12;
 let rippleTimer=0;
+const sharkRipples=[];
+const MAX_SHARK_RIPPLES=20;
 
 /* resize */
 function resize(){
@@ -837,7 +839,7 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);updRipples(d);
+  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -847,6 +849,34 @@ function update(d){
 
 /* surfer water ripples */
 let prevSurferDir={x:0,y:-1};
+function updSharkRipples(d){
+  for(const g of ghosts){
+    if(g.inHouse||g.eaten) continue;
+    if(Math.random()<0.08){
+      if(sharkRipples.length>=MAX_SHARK_RIPPLES) sharkRipples.shift();
+      sharkRipples.push({
+        x:tx(g.x)+ts/2+(Math.random()-0.5)*ts*0.5,
+        y:ty(g.y)+ts/2+(Math.random()-0.5)*ts*0.3,
+        r:1,maxR:ts*0.5,life:1
+      });
+    }
+  }
+  for(let i=sharkRipples.length-1;i>=0;i--){
+    const rp=sharkRipples[i];
+    rp.r+=ts*1.2*d;
+    rp.life=1-(rp.r-1)/(rp.maxR-1);
+    if(rp.life<=0) sharkRipples.splice(i,1);
+  }
+}
+function drawSharkRipples(){
+  for(const rp of sharkRipples){
+    ctx.globalAlpha=rp.life*0.2;
+    ctx.strokeStyle='#88bbdd';
+    ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
 function updRipples(d){
   if(!pm||!pm.moving) return;
   rippleTimer-=d;
@@ -1009,6 +1039,7 @@ function draw(){
   drawPlankton();
   drawMaze();
   drawRipples();
+  drawSharkRipples();
   drawWake();
   drawPM();
   for(const g of ghosts) drawGhost(g);
