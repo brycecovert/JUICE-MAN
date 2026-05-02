@@ -1,6 +1,6 @@
 # JUICE-MAN
 
-The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week. Can you make it juicier?
+The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week - sourced by the community. Can you make it juicier?
 
 ![A potential JUICE-MAN from a parallel universe](juice-man-embed.gif)
 
@@ -24,11 +24,11 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 ### Current
 
-The `juice_man.html` file is the living, evolving version of the game — built from v0. It's not the final release — it's the canvas. Each week, the elected JUICE-MAN adds more juice on top of whatever came before. The inspiration file (`juice_man_inspiration.html`) is a parallel universe version and not part of the official competition.
+The `juice_man.html` file is the living, evolving version of the game — built from v0. It's not the final release — it's the canvas. Each week, the next version of JUICE-MAN is elected by poll, adding more juice on top of whatever came before. The inspiration file (`juice_man_inspiration.html`) is a parallel universe version and not part of the official competition.
 
 ## How It Works
 
-Each week, a new "JUICE-MAN" is elected via poll of open PRs. The winning PR becomes the next JUICE-MAN, making the game more over-the-top than before.
+Each week, a new "JUICE-MAN" PR is elected via poll of open PRs. The winning PR becomes the next JUICE-MAN official release, making the game more over-the-top than before.
 
 **Start date:** May 10, 2026
 **End date:** When no further submissions are made
