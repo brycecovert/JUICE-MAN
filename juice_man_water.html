@@ -549,7 +549,49 @@ function drawGhost(g){
   if(g.scared){
     drawSharkFleeing(cx,cy,r,angle,g);return;
   }
-  drawSharkFin(cx,cy+bob,r,angle,g);
+  const dToPm=pm?dist(g.x,g.y,pm.x,pm.y):999;
+  if(dToPm<2.5){
+    drawSharkFull(cx,cy,r,angle,g,dToPm);
+  }else{
+    drawSharkFin(cx,cy+bob,r,angle,g);
+  }
+}
+function drawSharkFull(cx,cy,r,angle,g,distToPm){
+  const breachAmt=Math.max(0,1-(distToPm/2.5));
+  const splash=Math.sin(globalTime*8)*breachAmt*3;
+  ctx.save();
+  ctx.translate(cx,cy-splash*breachAmt);
+  ctx.rotate(angle);
+  ctx.globalAlpha=0.5+breachAmt*0.5;
+  ctx.fillStyle=g.col;
+  ctx.beginPath();
+  ctx.moveTo(r*0.7,0);
+  ctx.quadraticCurveTo(r*0.3,-r*0.4,-r*0.5,-r*0.3);
+  ctx.lineTo(-r*0.7,-r*0.55);
+  ctx.lineTo(-r*0.65,-r*0.3);
+  ctx.lineTo(-r*0.8,-r*0.3);
+  ctx.lineTo(-r*0.65,r*0.15);
+  ctx.lineTo(-r*0.7,r*0.55);
+  ctx.lineTo(-r*0.5,r*0.3);
+  ctx.quadraticCurveTo(r*0.3,r*0.4,r*0.7,0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle='#fff';
+  ctx.beginPath();ctx.arc(r*0.35,-r*0.1,r*0.06,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#111';
+  ctx.beginPath();ctx.arc(r*0.37,-r*0.1,r*0.03,0,Math.PI*2);ctx.fill();
+  if(breachAmt>0.3){
+    ctx.globalAlpha=(breachAmt-0.3)*0.7;
+    ctx.fillStyle='#fff';
+    for(let i=0;i<5;i++){
+      const sx=(Math.random()-0.5)*r*1.4;
+      const sy=r*0.2+Math.random()*r*0.3;
+      const sr=1+Math.random()*2.5;
+      ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
 }
 function drawSharkFin(cx,cy,r,angle,g){
   ctx.save();
