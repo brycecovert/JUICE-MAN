@@ -1,6 +1,10 @@
 # JUICE-MAN
 
-The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week. Can you make it juicier? 
+The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week. Can you make it juicier?
+
+![juice-man](https://github.com/user-attachments/assets/placeholder)
+
+> play the best humanity has to offer
 
 ## How It Works
 
