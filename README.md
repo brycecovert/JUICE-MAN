@@ -2,7 +2,7 @@
 
 The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week. Can you make it juicier?
 
-![juice-man](https://github.com/user-attachments/assets/placeholder)
+![A potential JUICE-MAN from a parallel universe](juice-man-embed.gif)
 
 > play the best humanity has to offer: [juice_man.html](https://brycecovert.github.io/JUICE-MAN/juice_man.html)
 
