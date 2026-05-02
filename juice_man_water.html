@@ -569,6 +569,24 @@ function drawPM(){
   if(!pm) return;
   const p=pm,cx=tx(p.x)+ts/2,cy=ty(p.y)+ts/2,r=ts*0.44;
   const angle=Math.atan2(p.dir.y,p.dir.x);
+  if(powerOn){
+    const pulse=0.6+0.4*Math.sin(globalTime*5);
+    const auraR=r*2.5;
+    const auraGrad=ctx.createRadialGradient(cx,cy,r*0.5,cx,cy,auraR);
+    auraGrad.addColorStop(0,`hsla(160,100%,70%,${0.3*pulse})`);
+    auraGrad.addColorStop(0.5,`hsla(170,100%,50%,${0.15*pulse})`);
+    auraGrad.addColorStop(1,'hsla(180,100%,40%,0)');
+    ctx.fillStyle=auraGrad;
+    ctx.beginPath();ctx.arc(cx,cy,auraR,0,Math.PI*2);ctx.fill();
+    for(let i=0;i<6;i++){
+      const a=globalTime*3+i*Math.PI/3;
+      const d=auraR*0.7+Math.sin(globalTime*4+i)*4;
+      ctx.globalAlpha=0.4*pulse;
+      ctx.fillStyle='#88ffdd';
+      ctx.beginPath();ctx.arc(cx+Math.cos(a)*d,cy+Math.sin(a)*d,1.5,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
   ctx.save();
   ctx.translate(cx,cy);
   ctx.rotate(angle+Math.PI/2);
