@@ -402,10 +402,15 @@ function nextLevel(){
 }
 
 /* drawing */
+function wallTurb(frac,t,c,r,off){
+  return Math.sin(frac*Math.PI*3+t*2.1+c*0.7+r*0.5+off)*1.8+
+    Math.sin(frac*Math.PI*5-t*1.7+c*1.1-r*0.9+off)*1.2+
+    Math.sin(frac*Math.PI*2.3+t*3.1-c*0.3+r*1.3+off)*0.8+
+    Math.cos(frac*Math.PI*4.1-t*0.9+c*0.5+r*0.7+off)*0.6;
+}
 function drawWavyWall(r,c,x,y,s){
   const t=globalTime;
-  const waveAmp=1.5+Math.sin(t*1.2+c*0.7+r*0.5)*1;
-  const segs=6;
+  const segs=8;
   ctx.strokeStyle='#0066cc';
   ctx.lineWidth=2;
   ctx.lineCap='round';
@@ -422,31 +427,32 @@ function drawWavyWall(r,c,x,y,s){
     else if(maze[nr][nc]!==T_WALL) isEdge=true;
     if(!isEdge) continue;
     ctx.beginPath();
+    const off=n.dr*2+n.dc*3;
     if(n.side==='top'){
       for(let i=0;i<=segs;i++){
         const frac=i/segs;
         const px=x+frac*s;
-        const py=y+Math.sin(frac*Math.PI*3+t*2+c+r)*waveAmp;
+        const py=y+wallTurb(frac,t,c,r,off);
         if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
     }else if(n.side==='bottom'){
       for(let i=0;i<=segs;i++){
         const frac=i/segs;
         const px=x+frac*s;
-        const py=y+s+Math.sin(frac*Math.PI*3+t*2+c+r+1)*waveAmp;
+        const py=y+s+wallTurb(frac,t,c,r,off+1);
         if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
     }else if(n.side==='left'){
       for(let i=0;i<=segs;i++){
         const frac=i/segs;
-        const px=x+Math.sin(frac*Math.PI*3+t*2+c+r+2)*waveAmp;
+        const px=x+wallTurb(frac,t,c,r,off+2);
         const py=y+frac*s;
         if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
     }else{
       for(let i=0;i<=segs;i++){
         const frac=i/segs;
-        const px=x+s+Math.sin(frac*Math.PI*3+t*2+c+r+3)*waveAmp;
+        const px=x+s+wallTurb(frac,t,c,r,off+3);
         const py=y+frac*s;
         if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
       }
