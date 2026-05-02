@@ -72,6 +72,9 @@ const plankton=[];
 const MAX_PLANKTON=80;
 const wakeParts=[];
 const MAX_WAKE=200;
+const surferRipples=[];
+const MAX_RIPPLES=12;
+let rippleTimer=0;
 
 /* resize */
 function resize(){
@@ -747,12 +750,44 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);
+  updPlankton(d);updWake(d);updRipples(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
   }
+}
+
+/* surfer water ripples */
+function updRipples(d){
+  if(!pm||!pm.moving) return;
+  rippleTimer-=d;
+  if(rippleTimer<=0){
+    rippleTimer=0.25;
+    if(surferRipples.length>=MAX_RIPPLES) surferRipples.shift();
+    surferRipples.push({
+      x:tx(pm.x)+ts/2,
+      y:ty(pm.y)+ts/2,
+      r:ts*0.2,
+      maxR:ts*1.2,
+      life:1
+    });
+  }
+  for(let i=surferRipples.length-1;i>=0;i--){
+    const rp=surferRipples[i];
+    rp.r+=ts*2.5*d;
+    rp.life=1-(rp.r-rp.maxR*0.17)/(rp.maxR*0.83);
+    if(rp.life<=0) surferRipples.splice(i,1);
+  }
+}
+function drawRipples(){
+  for(const rp of surferRipples){
+    ctx.globalAlpha=rp.life*0.35;
+    ctx.strokeStyle='#aaddff';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
 }
 
 /* surfer wake trail */
@@ -871,6 +906,7 @@ function draw(){
   drawCaustics();
   drawPlankton();
   drawMaze();
+  drawRipples();
   drawWake();
   drawPM();
   for(const g of ghosts) drawGhost(g);
