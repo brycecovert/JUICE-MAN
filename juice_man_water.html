@@ -495,14 +495,38 @@ function drawPM(){
   if(!pm) return;
   const p=pm,cx=tx(p.x)+ts/2,cy=ty(p.y)+ts/2,r=ts*0.44;
   const angle=Math.atan2(p.dir.y,p.dir.x);
-  ctx.fillStyle='#ffff00';
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle+Math.PI/2);
+  const bob=Math.sin(globalTime*4)*1.5;
+  /* surfboard */
+  ctx.fillStyle='#ffe4b5';
   ctx.beginPath();
-  ctx.arc(cx,cy,r,angle+p.mouth,angle+Math.PI*2-p.mouth);
-  ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
-  /* eye */
-  ctx.fillStyle='#000';
-  const ex=cx+Math.cos(angle-0.8)*r*0.4,ey=cy+Math.sin(angle-0.8)*r*0.4;
-  ctx.beginPath();ctx.arc(ex,ey,r*0.08,0,Math.PI*2);ctx.fill();
+  ctx.ellipse(0,bob+2,r*0.55,r*1.3,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle='#cc8844';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,bob+2-r*1.2);ctx.lineTo(0,bob+2+r*1.2);ctx.stroke();
+  ctx.strokeStyle='#ff4444';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(-r*0.25,bob+2);ctx.lineTo(r*0.25,bob+2);ctx.stroke();
+  /* legs */
+  ctx.strokeStyle='#ffcc88';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(-r*0.12,bob-r*0.15);ctx.lineTo(-r*0.18,bob+r*0.35);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(r*0.12,bob-r*0.15);ctx.lineTo(r*0.18,bob+r*0.35);ctx.stroke();
+  /* torso */
+  ctx.fillStyle='#ff4466';
+  ctx.fillRect(-r*0.18,bob-r*0.5,r*0.36,r*0.4);
+  /* arms */
+  ctx.strokeStyle='#ffcc88';ctx.lineWidth=2;
+  const armSwing=Math.sin(globalTime*5)*0.15;
+  ctx.beginPath();ctx.moveTo(-r*0.18,bob-r*0.35);ctx.lineTo(-r*0.5,bob-r*0.15+armSwing*r);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(r*0.18,bob-r*0.35);ctx.lineTo(r*0.5,bob-r*0.15-armSwing*r);ctx.stroke();
+  /* head */
+  ctx.fillStyle='#ffcc88';
+  ctx.beginPath();ctx.arc(0,bob-r*0.62,r*0.18,0,Math.PI*2);ctx.fill();
+  /* hair */
+  ctx.fillStyle='#553311';
+  ctx.beginPath();ctx.arc(0,bob-r*0.68,r*0.17,Math.PI,Math.PI*2);ctx.fill();
+  ctx.restore();
 }
 function drawGhost(g){
   let cx,cy;
