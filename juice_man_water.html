@@ -63,6 +63,7 @@ let state='title';
 let score=0,highScore=parseInt(localStorage.getItem('pacman_hi'))||0;
 let lives=3,level=1,combo=0,comboTime=0;
 let powerOn=false,powerTime=0,ghostChain=0;
+let bioFlash=0;
 let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
@@ -285,12 +286,16 @@ function updGhost(g,d){
 /* power */
 function doPower(){
   powerOn=true;powerTime=POWER_DURATION;ghostChain=0;
+  bioFlash=1;
   for(const g of ghosts) if(!g.inHouse&&!g.eaten) g.scared=true;
 }
 function updPower(d){
   if(!powerOn) return;
   powerTime-=d*1000;
   if(powerTime<=0){powerOn=false;for(const g of ghosts) g.scared=false;}
+}
+function updBioFlash(d){
+  if(bioFlash>0) bioFlash=Math.max(0,bioFlash-d*2.5);
 }
 
 /* collision */
@@ -893,7 +898,7 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);
+  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);updBioFlash(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -1156,6 +1161,12 @@ function draw(){
   for(const g of ghosts) drawGhost(g);
   drawCollectFx();
   drawHUD();drawMobile();
+  if(bioFlash>0){
+    ctx.globalAlpha=bioFlash*0.6;
+    ctx.fillStyle='#88ffcc';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=1;
+  }
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
   if(state==='levelComplete') drawLvlComplete();
