@@ -1297,6 +1297,14 @@ function draw(){
     ctx.globalAlpha=bioFlash*0.6;
     ctx.fillStyle='#88ffcc';
     ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=bioFlash*0.3;
+    const off=bioFlash*8;
+    ctx.globalCompositeOperation='lighter';
+    ctx.fillStyle='rgba(255,0,80,0.4)';
+    ctx.fillRect(-off,0,canvas.width,canvas.height);
+    ctx.fillStyle='rgba(0,80,255,0.4)';
+    ctx.fillRect(off,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation='source-over';
     ctx.globalAlpha=1;
   }
   if(state==='paused') drawPaused();
