@@ -77,6 +77,8 @@ const MAX_RIPPLES=12;
 let rippleTimer=0;
 const sharkRipples=[];
 const MAX_SHARK_RIPPLES=20;
+const collectFx=[];
+const MAX_COLLECT_FX=60;
 
 /* resize */
 function resize(){
@@ -182,11 +184,13 @@ function collect(gx,gy){
     maze[gy][gx]=T_PATH;pelletCount--;score+=10;
     combo++;comboTime=COMBO_WINDOW;
     const bonus=Math.min(combo,10)*5;score+=bonus;
+    spawnCollectFx(cx,cy,false);
     if(pelletCount<=0) state='levelComplete';
   }
   if(cell===T_POWER){
     maze[gy][gx]=T_PATH;pelletCount--;score+=50;
     doPower();
+    spawnCollectFx(cx,cy,true);
     if(pelletCount<=0) state='levelComplete';
   }
   if(cell===T_FRUIT&&fruit){
@@ -864,12 +868,69 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);
+  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
   }
+}
+
+/* shell collection effects */
+function spawnCollectFx(cx,cy,isPower){
+  const pearlCount=isPower?8:3;
+  for(let i=0;i<pearlCount;i++){
+    if(collectFx.length>=MAX_COLLECT_FX) collectFx.shift();
+    const a=-Math.PI/2+(Math.random()-0.5)*1.2;
+    const spd=30+Math.random()*50;
+    collectFx.push({
+      x:cx,y:cy,
+      vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,
+      r:isPower?3+Math.random()*3:2+Math.random()*2,
+      life:1,decay:0.6+Math.random()*0.5,
+      type:'pearl',
+      sparkle:Math.random()*Math.PI*2
+    });
+  }
+  for(let i=0;i<12;i++){
+    if(collectFx.length>=MAX_COLLECT_FX) collectFx.shift();
+    const a=Math.random()*Math.PI*2;
+    const spd=10+Math.random()*25;
+    collectFx.push({
+      x:cx,y:cy,
+      vx:Math.cos(a)*spd,vy:Math.sin(a)*spd-15,
+      r:1+Math.random()*2,
+      life:1,decay:0.8+Math.random()*0.6,
+      type:'droplet',
+      grav:80
+    });
+  }
+}
+function updCollectFx(d){
+  for(let i=collectFx.length-1;i>=0;i--){
+    const p=collectFx[i];
+    p.x+=p.vx*d;p.y+=p.vy*d;
+    if(p.type==='droplet'){p.vy+=p.grav*d;}
+    p.sparkle=(p.sparkle||0)+d*8;
+    p.life-=p.decay*d;
+    if(p.life<=0) collectFx.splice(i,1);
+  }
+}
+function drawCollectFx(){
+  for(const p of collectFx){
+    const flk=p.type==='pearl'?0.6+0.4*Math.sin(p.sparkle):1;
+    ctx.globalAlpha=p.life*flk;
+    if(p.type==='pearl'){
+      ctx.fillStyle='#ffffee';
+      ctx.shadowColor='#ffffaa';ctx.shadowBlur=6;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+    }else{
+      ctx.fillStyle='#88ccff';
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+    }
+  }
+  ctx.globalAlpha=1;ctx.shadowBlur=0;
 }
 
 /* surfer water ripples */
@@ -1068,6 +1129,7 @@ function draw(){
   drawWake();
   drawPM();
   for(const g of ghosts) drawGhost(g);
+  drawCollectFx();
   drawHUD();drawMobile();
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
