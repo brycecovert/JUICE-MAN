@@ -424,6 +424,33 @@ function wallTurb(frac,t,c,r,off){
     Math.sin(frac*Math.PI*2.3+t*3.1-c*0.3+r*1.3+off)*0.8+
     Math.cos(frac*Math.PI*4.1-t*0.9+c*0.5+r*0.7+off)*0.6;
 }
+function drawBioOrb(r,c,cx,cy,s){
+  const t=globalTime;
+  const pulse=0.7+0.3*Math.sin(t*3+r*2+c*1.5);
+  const hue=140+Math.sin(t*1.5+r+c)*30;
+  const orbR=s*0.18*pulse;
+  ctx.save();
+  ctx.shadowColor=`hsla(${hue},100%,70%,0.8)`;
+  ctx.shadowBlur=15+10*pulse;
+  const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,orbR);
+  grad.addColorStop(0,`hsla(${hue},100%,90%,${0.9*pulse})`);
+  grad.addColorStop(0.5,`hsla(${hue},100%,60%,${0.6*pulse})`);
+  grad.addColorStop(1,`hsla(${hue},100%,40%,0)`);
+  ctx.fillStyle=grad;
+  ctx.beginPath();ctx.arc(cx,cy,orbR,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.restore();
+  for(let i=0;i<4;i++){
+    const a=t*2+i*Math.PI/2+r;
+    const d=orbR*1.5+Math.sin(t*4+i)*3;
+    const sx=cx+Math.cos(a)*d;
+    const sy=cy+Math.sin(a)*d;
+    ctx.globalAlpha=0.3*pulse;
+    ctx.fillStyle=`hsla(${hue},100%,80%,1)`;
+    ctx.beginPath();ctx.arc(sx,sy,1,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
 function drawClamShell(r,c,cx,cy,s){
   const t=globalTime;
   const openAmt=(Math.sin(t*1.5+r*2.3+c*1.7)+1)*0.5;
@@ -519,9 +546,7 @@ function drawMaze(){
         drawClamShell(r,c,cx2,cy2,s);
       }
       if(cell===T_POWER){
-        const p=0.7+0.3*Math.sin(Date.now()*0.005);
-        ctx.fillStyle=`rgba(255,184,174,${p})`;
-        ctx.beginPath();ctx.arc(cx2,cy2,s*0.15,0,Math.PI*2);ctx.fill();
+        drawBioOrb(r,c,cx2,cy2,s);
       }
       if(cell===T_FRUIT&&fruit){
         ctx.fillStyle='#ff0000';
