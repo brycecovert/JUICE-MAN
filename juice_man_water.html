@@ -64,6 +64,7 @@ let score=0,highScore=parseInt(localStorage.getItem('pacman_hi'))||0;
 let lives=3,level=1,combo=0,comboTime=0;
 let powerOn=false,powerTime=0,ghostChain=0;
 let bioFlash=0;
+let shakeAmt=0,shakeX=0,shakeY=0;
 let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
@@ -289,6 +290,7 @@ function updGhost(g,d){
 function doPower(){
   powerOn=true;powerTime=POWER_DURATION;ghostChain=0;
   bioFlash=1;
+  triggerShake(10);
   for(const g of ghosts) if(!g.inHouse&&!g.eaten) g.scared=true;
 }
 function updPower(d){
@@ -299,6 +301,14 @@ function updPower(d){
 function updBioFlash(d){
   if(bioFlash>0) bioFlash=Math.max(0,bioFlash-d*2.5);
 }
+function updShake(d){
+  if(shakeAmt>0){
+    shakeX=Math.sin(globalTime*25)*shakeAmt+Math.sin(globalTime*17)*shakeAmt*0.5;
+    shakeY=Math.cos(globalTime*23)*shakeAmt+Math.cos(globalTime*13)*shakeAmt*0.5;
+    shakeAmt=Math.max(0,shakeAmt-d*8);
+  }else{shakeX=0;shakeY=0;}
+}
+function triggerShake(a){shakeAmt=Math.max(shakeAmt,a);}
 
 /* collision */
 function collisions(){
@@ -312,6 +322,7 @@ function collisions(){
         const pts=[200,400,800,1600];
         score+=pts[Math.min(ghostChain-1,3)];
         spawnBubbleExplosion(tx(g.x)+ts/2,ty(g.y)+ts/2);
+        triggerShake(6);
       }else if(!g.eaten){
         lifeLost();return;
       }
@@ -320,6 +331,7 @@ function collisions(){
 }
 function lifeLost(){
   lives--;
+  triggerShake(12);
   if(lives<=0){
     state='gameOver';
     if(score>highScore){highScore=score;localStorage.setItem('pacman_hi',highScore);}
@@ -923,7 +935,7 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);updBioFlash(d);updBubbleFx(d);
+  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);updBioFlash(d);updBubbleFx(d);updShake(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -1233,6 +1245,8 @@ function draw(){
   bgGrad.addColorStop(1,'#000810');
   ctx.fillStyle=bgGrad;ctx.fillRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
+  ctx.save();
+  ctx.translate(shakeX,shakeY);
   drawCaustics();
   drawPlankton();
   drawMaze();
@@ -1243,6 +1257,7 @@ function draw(){
   for(const g of ghosts) drawGhost(g);
   drawCollectFx();
   drawBubbleFx();
+  ctx.restore();
   drawHUD();drawMobile();
   if(bioFlash>0){
     ctx.globalAlpha=bioFlash*0.6;
