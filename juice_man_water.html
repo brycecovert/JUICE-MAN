@@ -70,6 +70,8 @@ let lastT=0,dt=0,globalTime=0;
 let ts=0,ox=0,oy=0;
 const plankton=[];
 const MAX_PLANKTON=80;
+const wakeParts=[];
+const MAX_WAKE=200;
 
 /* resize */
 function resize(){
@@ -152,6 +154,8 @@ function updPM(d){
   }
   if(p.moving){
     p.prog+=spd;
+    const wakeCx=tx(p.x)+ts/2,wakeCy=ty(p.y)+ts/2;
+    spawnWake(wakeCx,wakeCy,p.dir.x,p.dir.y);
     if(p.prog>=ts){
       p.gx=p.fx;p.gy=p.fy;p.gx=wrap(p.gx);p.x=p.gx;p.y=p.gy;p.moving=false;p.prog=0;
       collect(p.gx,p.gy);
@@ -743,12 +747,51 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);
+  updPlankton(d);updWake(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
   }
+}
+
+/* surfer wake trail */
+function spawnWake(cx,cy,dx,dy){
+  if(wakeParts.length>=MAX_WAKE) wakeParts.shift();
+  const angle=Math.atan2(dy,dx);
+  for(let i=0;i<3;i++){
+    const spread=(Math.random()-0.5)*12;
+    const spd=8+Math.random()*12;
+    wakeParts.push({
+      x:cx+Math.cos(angle+Math.PI)*ts*0.3+Math.sin(angle)*spread,
+      y:cy+Math.sin(angle+Math.PI)*ts*0.3+Math.cos(angle)*spread,
+      vx:Math.cos(angle+Math.PI)*spd*0.3+(Math.random()-0.5)*6,
+      vy:Math.sin(angle+Math.PI)*spd*0.3+(Math.random()-0.5)*6,
+      r:1.5+Math.random()*3,
+      life:1,
+      decay:0.4+Math.random()*0.4
+    });
+  }
+}
+function updWake(d){
+  for(let i=wakeParts.length-1;i>=0;i--){
+    const p=wakeParts[i];
+    p.x+=p.vx*d;
+    p.y+=p.vy*d;
+    p.vx*=0.97;
+    p.vy*=0.97;
+    p.r+=d*2;
+    p.life-=p.decay*d;
+    if(p.life<=0) wakeParts.splice(i,1);
+  }
+}
+function drawWake(){
+  for(const p of wakeParts){
+    ctx.globalAlpha=p.life*0.6;
+    ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
 }
 
 /* plankton / marine snow */
@@ -828,6 +871,7 @@ function draw(){
   drawCaustics();
   drawPlankton();
   drawMaze();
+  drawWake();
   drawPM();
   for(const g of ghosts) drawGhost(g);
   drawHUD();drawMobile();
