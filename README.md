@@ -4,7 +4,7 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 
 ![juice-man](https://github.com/user-attachments/assets/placeholder)
 
-> play the best humanity has to offer
+> play the best humanity has to offer: [juice_man.html](https://raw.githubusercontent.com/brycecovert/JUICE-MAN/main/juice_man.html)
 
 ## How It Works
 
