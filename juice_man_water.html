@@ -542,31 +542,59 @@ function drawGhost(g){
   let cx,cy;
   if(g.inHouse){cx=tx(g.x)+ts/2;cy=ty(g.y)+ts/2;}
   else{cx=tx(g.x)+ts/2;cy=ty(g.y)+ts/2;}
-  const s=ts,r=s*0.42;
+  const r=ts*0.42;
   if(g.eaten){drawGEyes(cx,cy,g);return;}
-  let col=g.col;
-  if(g.scared){col=(powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0)?'#fff':'#2222ff';}
-  ctx.fillStyle=col;
-  ctx.beginPath();
-  ctx.arc(cx,cy-r*0.1,r,Math.PI,0,false);
-  ctx.lineTo(cx+r,cy+r*0.55);
-  const w=Math.sin(Date.now()*0.008)*r*0.12;
-  for(let i=3;i>=0;i--){
-    const bx=cx+r-(i*r*0.5),by=cy+r*0.55+((i%2===0)?w:-w);
-    ctx.lineTo(bx-r*0.2,by);ctx.lineTo(bx-r*0.4,by+r*0.05);
-  }
-  ctx.closePath();ctx.fill();
+  const angle=Math.atan2(g.dir.y,g.dir.x);
+  const bob=Math.sin(globalTime*2.5+g.idx*1.5)*2;
   if(g.scared){
-    const fl=powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0;
-    ctx.fillStyle=fl?'#f00':'#fff';
-    ctx.beginPath();
-    ctx.arc(cx-r*0.28,cy-r*0.18,r*0.11,0,Math.PI*2);
-    ctx.arc(cx+r*0.28,cy-r*0.18,r*0.11,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle=fl?'#f00':'#fff';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(cx-r*0.35,cy+r*0.12);
-    for(let i=0;i<5;i++) ctx.lineTo(cx-r*0.35+r*0.175*i,cy+r*0.12+(i%2?-r*0.07:0));
-    ctx.stroke();
-  }else drawGEyes(cx,cy,g);
+    drawSharkFleeing(cx,cy,r,angle,g);return;
+  }
+  drawSharkFin(cx,cy+bob,r,angle,g);
+}
+function drawSharkFin(cx,cy,r,angle,g){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  const finColor=g.col;
+  ctx.fillStyle=finColor;
+  ctx.globalAlpha=0.85;
+  ctx.beginPath();
+  ctx.moveTo(-r*0.15,r*0.1);
+  ctx.quadraticCurveTo(0,-r*0.6,r*0.15,r*0.1);
+  ctx.quadraticCurveTo(0,-r*0.05,-r*0.15,r*0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha=0.3;
+  ctx.strokeStyle=finColor;
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(-r*0.4,0);
+  ctx.lineTo(r*0.4,0);
+  ctx.stroke();
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+function drawSharkFleeing(cx,cy,r,angle,g){
+  const fl=powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  ctx.globalAlpha=fl?0.9:0.5;
+  ctx.fillStyle=fl?'#fff':'#2222ff';
+  ctx.beginPath();
+  ctx.moveTo(r*0.6,0);
+  ctx.quadraticCurveTo(r*0.3,-r*0.35,-r*0.4,-r*0.25);
+  ctx.lineTo(-r*0.55,-r*0.4);
+  ctx.lineTo(-r*0.5,-r*0.25);
+  ctx.lineTo(-r*0.65,-r*0.25);
+  ctx.lineTo(-r*0.5,r*0.1);
+  ctx.lineTo(-r*0.55,r*0.4);
+  ctx.lineTo(-r*0.4,r*0.25);
+  ctx.quadraticCurveTo(r*0.3,r*0.35,r*0.6,0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.restore();
 }
 function drawGEyes(cx,cy,g){
   const r=ts*0.42,dx=g.dir.x,dy=g.dir.y;
