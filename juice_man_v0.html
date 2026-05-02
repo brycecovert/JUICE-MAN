@@ -68,6 +68,9 @@ let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
 let lastT=0,dt=0;
 let ts=0,ox=0,oy=0;
+let globalTime=0;
+let deuceJuice=0,deuceTimer=0,deuceFlash=0,deuceKick=0,deucePulse=0;
+let deuceRings=[],deuceBits=[],deuceStars=[];
 
 /* resize */
 function resize(){
@@ -103,6 +106,38 @@ function wrap(c){
   return c;
 }
 function dist(ax,ay,bx,by){return Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by));}
+function rnd(a,b){return a+Math.random()*(b-a);}
+
+function addDeuceBits(x,y,count,hue,boost){
+  for(let i=0;i<count;i++){
+    const ang=Math.random()*Math.PI*2;
+    const sp=rnd(60,280)*(1+boost*0.18);
+    deuceBits.push({
+      x,y,
+      vx:Math.cos(ang)*sp,
+      vy:Math.sin(ang)*sp,
+      life:rnd(0.3,0.95),
+      t:0,
+      s:rnd(1.4,4.8),
+      hue:hue+rnd(-26,26)
+    });
+  }
+  if(deuceBits.length>900) deuceBits.splice(0,deuceBits.length-900);
+}
+
+function addDeuceJuice(amount,x,y){
+  deuceJuice=Math.min(16,deuceJuice+amount);
+  deuceTimer=Math.max(deuceTimer,1.6+amount*0.35);
+  deuceFlash=Math.min(1,deuceFlash+0.1+amount*0.08);
+  deuceKick=Math.min(22,deuceKick+1.2+amount*2.8);
+  deucePulse+=amount*0.9;
+  if(Number.isFinite(x)&&Number.isFinite(y)){
+    const hue=175+Math.sin(globalTime*2.2+deucePulse)*75;
+    deuceRings.push({x,y,r:8,w:2+amount*1.2,life:0.7+amount*0.18,t:0,hue});
+    if(deuceRings.length>160) deuceRings.splice(0,deuceRings.length-160);
+    addDeuceBits(x,y,Math.min(34,8+(amount*8|0)),hue,amount);
+  }
+}
 
 /* maze init */
 function initMaze(){
@@ -167,16 +202,19 @@ function collect(gx,gy){
     maze[gy][gx]=T_PATH;pelletCount--;score+=10;
     combo++;comboTime=COMBO_WINDOW;
     const bonus=Math.min(combo,10)*5;score+=bonus;
+    addDeuceJuice(combo>=2?0.35:0.18,cx,cy);
     if(pelletCount<=0) state='levelComplete';
   }
   if(cell===T_POWER){
     maze[gy][gx]=T_PATH;pelletCount--;score+=50;
     doPower();
+    addDeuceJuice(1.65,cx,cy);
     if(pelletCount<=0) state='levelComplete';
   }
   if(cell===T_FRUIT&&fruit){
     maze[gy][gx]=T_PATH;score+=500;
     fruit=null;fruitTime=0;
+    addDeuceJuice(2.2,cx,cy);
   }
 }
 
@@ -285,6 +323,7 @@ function collisions(){
         g.eaten=true;g.scared=false;ghostChain++;
         const pts=[200,400,800,1600];
         score+=pts[Math.min(ghostChain-1,3)];
+        addDeuceJuice(2.6+ghostChain*0.5,tx(g.x)+ts/2,ty(g.y)+ts/2);
       }else if(!g.eaten){
         lifeLost();return;
       }
@@ -292,6 +331,7 @@ function collisions(){
   }
 }
 function lifeLost(){
+  addDeuceJuice(1.4,tx(pm.x)+ts/2,ty(pm.y)+ts/2);
   lives--;
   if(lives<=0){
     state='gameOver';
@@ -319,6 +359,61 @@ function updFruit(d){
 }
 function updCombo(d){
   if(comboTime>0){comboTime-=d*1000;if(comboTime<=0){combo=0;comboTime=0;}}
+}
+
+function updDeuce(d){
+  globalTime+=d;
+  if(state==='playing'){
+    const active=deuceTimer>0||deuceJuice>0.9;
+    if(active&&Math.random()<Math.min(0.5,0.12+d*deuceJuice*0.75)){
+      const edge=Math.random();
+      const x=edge<0.25?0:edge<0.5?canvas.width:Math.random()*canvas.width;
+      const y=edge>=0.5&&edge<0.75?0:edge>=0.75?canvas.height:Math.random()*canvas.height;
+      const cx=tx(pm.x)+ts/2,cy=ty(pm.y)+ts/2;
+      const ang=Math.atan2(cy-y,cx-x)+rnd(-0.22,0.22);
+      const sp=rnd(210,470)+deuceJuice*20;
+      deuceStars.push({
+        x,y,
+        vx:Math.cos(ang)*sp,
+        vy:Math.sin(ang)*sp,
+        life:rnd(0.55,1.2),
+        t:0,
+        s:rnd(1.2,3.8),
+        hue:rnd(150,245)
+      });
+      if(deuceStars.length>220) deuceStars.splice(0,deuceStars.length-220);
+    }
+  }
+
+  if(deuceTimer>0) deuceTimer=Math.max(0,deuceTimer-d);
+  deuceJuice=Math.max(0,deuceJuice-d*(deuceTimer>0?0.24:0.9));
+  deuceFlash=Math.max(0,deuceFlash-d*1.9);
+  deuceKick=Math.max(0,deuceKick-d*28);
+  deucePulse+=d*(3+deuceJuice*0.45);
+
+  for(let i=deuceRings.length-1;i>=0;i--){
+    const r=deuceRings[i];
+    r.t+=d;
+    if(r.t>=r.life){deuceRings.splice(i,1);continue;}
+    r.r+=(120+deuceJuice*7)*d;
+    r.w=Math.max(0.4,r.w-d*2.5);
+  }
+  for(let i=deuceBits.length-1;i>=0;i--){
+    const p=deuceBits[i];
+    p.t+=d;
+    if(p.t>=p.life){deuceBits.splice(i,1);continue;}
+    p.vx*=1-d*1.8;
+    p.vy*=1-d*1.8;
+    p.x+=p.vx*d;
+    p.y+=p.vy*d;
+  }
+  for(let i=deuceStars.length-1;i>=0;i--){
+    const p=deuceStars[i];
+    p.t+=d;
+    if(p.t>=p.life){deuceStars.splice(i,1);continue;}
+    p.x+=p.vx*d;
+    p.y+=p.vy*d;
+  }
 }
 
 /* input */
@@ -387,11 +482,14 @@ canvas.addEventListener('touchend',e=>{
 /* game flow */
 function startGame(){
   score=0;lives=3;level=1;combo=0;comboTime=0;powerOn=false;ghostChain=0;
+  deuceJuice=0;deuceTimer=0;deuceFlash=0;deuceKick=0;deucePulse=0;
+  deuceRings=[];deuceBits=[];deuceStars=[];
   initMaze();pm=createPM();ghosts=[];
   for(let i=0;i<4;i++) ghosts[i]=createGhost(i);
   fruit=null;fruitSpawned=false;fruitTime=0;state='playing';
 }
 function nextLevel(){
+  addDeuceJuice(4.2,canvas.width/2,canvas.height/2);
   level++;initMaze();resetPos();
   pm.spd=BASE_SPEED+level*SPEED_INC;
   for(const g of ghosts) g.spd=(BASE_SPEED+level*SPEED_INC)*GHOST_SPEED_RATIO;
@@ -657,8 +755,93 @@ function drawMobile(){
   ctx.globalAlpha=1;
 }
 
+function drawDeuceBack(){
+  const amt=Math.min(1,deuceJuice/7+(deuceTimer>0?0.34:0));
+  if(amt<=0.001) return;
+  const cx=tx(pm.x)+ts/2,cy=ty(pm.y)+ts/2;
+  const grd=ctx.createRadialGradient(cx,cy,ts*2,cx,cy,Math.max(canvas.width,canvas.height)*0.72);
+  grd.addColorStop(0,`hsla(${190+Math.sin(globalTime*2.1)*45},100%,58%,${0.16+amt*0.17})`);
+  grd.addColorStop(0.5,`hsla(${320+Math.sin(globalTime*1.4)*35},100%,44%,${0.08+amt*0.12})`);
+  grd.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  const stripe=Math.max(6,Math.floor(ts*0.38));
+  ctx.globalAlpha=0.05+amt*0.06;
+  ctx.fillStyle='#9cf';
+  const drift=(globalTime*(55+amt*95))%(stripe*2);
+  for(let y=-stripe;y<canvas.height+stripe;y+=stripe*2) ctx.fillRect(0,y+drift,canvas.width,stripe);
+  ctx.globalAlpha=1;
+}
+
+function drawDeuceFX(){
+  const amt=Math.min(1,deuceJuice/7+(deuceTimer>0?0.28:0));
+  if(amt<=0.001&&deuceRings.length===0&&deuceBits.length===0&&deuceStars.length===0) return;
+
+  if(amt>0.08&&pm){
+    const cx=tx(pm.x)+ts/2,cy=ty(pm.y)+ts/2;
+    const kx=Math.sin(globalTime*36)*deuceKick*0.03;
+    const ky=Math.cos(globalTime*32)*deuceKick*0.03;
+    ctx.globalAlpha=0.12+amt*0.16;
+    ctx.fillStyle='rgba(255,60,120,0.75)';
+    ctx.beginPath();ctx.arc(cx-kx*2.2,cy+ky*2.2,ts*0.7+amt*ts*0.65,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(70,250,255,0.75)';
+    ctx.beginPath();ctx.arc(cx+kx*2.2,cy-ky*2.2,ts*0.7+amt*ts*0.65,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  }
+
+  for(const r of deuceRings){
+    const a=1-r.t/r.life;
+    ctx.strokeStyle=`hsla(${r.hue+globalTime*48},100%,62%,${a*0.65})`;
+    ctx.lineWidth=r.w;
+    ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);ctx.stroke();
+  }
+  for(const p of deuceBits){
+    const a=1-p.t/p.life;
+    ctx.fillStyle=`hsla(${p.hue+globalTime*95},100%,62%,${a*0.9})`;
+    const s=p.s*(0.65+a*0.9);
+    ctx.fillRect(p.x-s*0.5,p.y-s*0.5,s,s);
+  }
+  for(const p of deuceStars){
+    const a=1-p.t/p.life;
+    const nx=p.vx/(Math.abs(p.vx)+Math.abs(p.vy)+1),ny=p.vy/(Math.abs(p.vx)+Math.abs(p.vy)+1);
+    ctx.strokeStyle=`hsla(${p.hue},100%,70%,${a*0.95})`;
+    ctx.lineWidth=1.2+a*1.8;
+    ctx.beginPath();
+    ctx.moveTo(p.x,p.y);
+    ctx.lineTo(p.x-nx*(18+a*38),p.y-ny*(18+a*38));
+    ctx.stroke();
+  }
+
+  if(amt>0.03){
+    ctx.globalAlpha=(0.02+amt*0.06)+deuceFlash*0.08;
+    ctx.fillStyle=`hsl(${185+Math.sin(globalTime*5.2)*38} 100% 62%)`;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=1;
+  }
+}
+
+function drawDeuceHUD(){
+  const amt=Math.min(1,deuceJuice/7+(deuceTimer>0?0.26:0));
+  if(amt<=0.02&&combo<2) return;
+  const w=canvas.width;
+  const x=w*0.52,y=17;
+  const txt=deuceTimer>0?'DEUCE JUICE':combo>=2?'DEUCE BUILD':'JUICE DRIFT';
+  ctx.textAlign='left';
+  ctx.font='bold 11px monospace';
+  ctx.globalAlpha=0.45+amt*0.5;
+  ctx.fillStyle=`hsl(${180+Math.sin(globalTime*6)*50} 100% 70%)`;
+  ctx.fillText(txt,x,y);
+  ctx.globalAlpha=1;
+  const bw=96,bh=4,bx=x,by=23;
+  ctx.fillStyle='rgba(255,255,255,0.15)';ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle=`hsl(${170+Math.sin(globalTime*5+deucePulse)*40} 100% 64%)`;
+  ctx.fillRect(bx,by,bw*Math.min(1,amt),bh);
+}
+
 /* main update */
 function update(d){
+  updDeuce(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -668,16 +851,22 @@ function update(d){
 
 /* main draw */
 function draw(){
+  const shakeX=(Math.random()*2-1)*deuceKick;
+  const shakeY=(Math.random()*2-1)*deuceKick;
+  ctx.setTransform(1,0,0,1,shakeX,shakeY);
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
-  if(state==='title'){drawTitle();drawHUD();return;}
+  if(state==='title'){drawTitle();drawHUD();ctx.setTransform(1,0,0,1,0,0);return;}
+  drawDeuceBack();
   drawMaze();
   drawPM();
   for(const g of ghosts) drawGhost(g);
-  drawHUD();drawMobile();
+  drawDeuceFX();
+  drawHUD();drawDeuceHUD();drawMobile();
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
   if(state==='levelComplete') drawLvlComplete();
   if(state==='gameOver') drawGameOver();
+  ctx.setTransform(1,0,0,1,0,0);
 }
 
 /* loop */
