@@ -475,13 +475,10 @@ function nextLevel(){
 }
 
 /* drawing */
-function wallTurb(frac,t,c,r,off){
-  return Math.sin(frac*Math.PI*2+t*1.3+c*0.4+r*0.3+off)*4+
-    Math.sin(frac*Math.PI*3.7-t*2.1+c*0.8-r*0.6+off)*3+
-    Math.sin(frac*Math.PI*1.5+t*3.7-c*0.2+r*1.1+off)*2.5+
-    Math.cos(frac*Math.PI*5.3-t*1.1+c*0.6+r*0.4+off)*2+
-    Math.sin(frac*Math.PI*6.9+t*4.3+c*1.3-r*0.8+off)*1.5+
-    Math.cos(frac*Math.PI*8.1-t*2.7+c*0.3+r*1.7+off)*1;
+function wallTurbPx(pos,t,off){
+  return Math.sin(pos*0.035+t*3.5+off)*10+
+    Math.sin(pos*0.06-t*4.8+off)*7+
+    Math.cos(pos*0.09+t*5.5+off)*5;
 }
 function drawBioOrb(r,c,cx,cy,s){
   const t=globalTime;
@@ -587,69 +584,70 @@ function drawClamShell(r,c,cx,cy,s){
   }
   ctx.restore();
 }
-function drawWavyWall(r,c,x,y,s){
+function drawWallOutlines(){
   const t=globalTime;
-  const segs=16;
+  const step=ts/4;
   ctx.strokeStyle='#00bbff';
   ctx.lineWidth=3;
   ctx.lineCap='round';
+  ctx.lineJoin='round';
   ctx.shadowColor='#00ccff';ctx.shadowBlur=10;
-  const neighbors=[
-    {dr:-1,dc:0,side:'top'},
-    {dr:1,dc:0,side:'bottom'},
-    {dr:0,dc:-1,side:'left'},
-    {dr:0,dc:1,side:'right'}
-  ];
-  for(const n of neighbors){
-    const nr=r+n.dr,nc=c+n.dc;
-    let isEdge=false;
-    if(nr<0||nr>=ROWS||nc<0||nc>=COLS) isEdge=true;
-    else if(maze[nr][nc]!==T_WALL) isEdge=true;
-    if(!isEdge) continue;
-    ctx.beginPath();
-    const off=n.dr*2+n.dc*3;
-    if(n.side==='top'){
-      for(let i=0;i<=segs;i++){
-        const frac=i/segs;
-        const px=x+frac*s;
-        const py=y+wallTurb(frac,t,c,r,off);
-        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-      }
-    }else if(n.side==='bottom'){
-      for(let i=0;i<=segs;i++){
-        const frac=i/segs;
-        const px=x+frac*s;
-        const py=y+s+wallTurb(frac,t,c,r,off+1);
-        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-      }
-    }else if(n.side==='left'){
-      for(let i=0;i<=segs;i++){
-        const frac=i/segs;
-        const px=x+wallTurb(frac,t,c,r,off+2);
-        const py=y+frac*s;
-        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
-      }
-    }else{
-      for(let i=0;i<=segs;i++){
-        const frac=i/segs;
-        const px=x+s+wallTurb(frac,t,c,r,off+3);
-        const py=y+frac*s;
-        if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+  function isW(r,c){return r>=0&&r<ROWS&&c>=0&&c<COLS&&maze[r][c]===T_WALL;}
+  for(let r=0;r<=ROWS;r++){
+    const yBase=oy+r*ts;
+    const off=r*0.7+1.3;
+    let rs=-1;
+    for(let c=0;c<=COLS;c++){
+      const hb=c<COLS&&isW(r-1,c)!==isW(r,c);
+      if(hb&&rs<0) rs=c;
+      else if(!hb&&rs>=0){
+        const x1=ox+rs*ts,x2=ox+c*ts;
+        ctx.beginPath();
+        for(let px=x1;px<=x2;px+=step){
+          const py=yBase+wallTurbPx(px,t,off);
+          px===x1?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        }
+        const py=yBase+wallTurbPx(x2,t,off);
+        ctx.lineTo(x2,py);
+        ctx.stroke();
+        rs=-1;
       }
     }
-    ctx.stroke();
+  }
+  for(let c=0;c<=COLS;c++){
+    const xBase=ox+c*ts;
+    const off=c*0.7+2.7;
+    let rs=-1;
+    for(let r=0;r<=ROWS;r++){
+      const vb=r<ROWS&&isW(r,c-1)!==isW(r,c);
+      if(vb&&rs<0) rs=r;
+      else if(!vb&&rs>=0){
+        const y1=oy+rs*ts,y2=oy+r*ts;
+        ctx.beginPath();
+        for(let py=y1;py<=y2;py+=step){
+          const px=xBase+wallTurbPx(py,t,off);
+          py===y1?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        }
+        const px=xBase+wallTurbPx(y2,t,off);
+        ctx.lineTo(px,y2);
+        ctx.stroke();
+        rs=-1;
+      }
+    }
   }
   ctx.shadowBlur=0;
   ctx.fillStyle='rgba(0,50,100,0.55)';
-  ctx.fillRect(x+2,y+2,s-4,s-4);
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(maze[r][c]===T_WALL) ctx.fillRect(tx(c)+2,ty(r)+2,ts-4,ts-4);
+    }
+  }
 }
 function drawMaze(){
+  drawWallOutlines();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const cell=maze[r][c],x=tx(c),y=ty(r),cx2=x+ts/2,cy2=y+ts/2,s=ts;
-      if(cell===T_WALL){
-        drawWavyWall(r,c,x,y,s);
-      }
       if(cell===T_DOOR){
         ctx.fillStyle='#7755bb';
         ctx.shadowColor='#9977dd';ctx.shadowBlur=10;
