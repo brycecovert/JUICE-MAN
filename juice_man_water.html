@@ -601,14 +601,15 @@ function drawWallOutlines(){
       const hb=c<COLS&&isW(r-1,c)!==isW(r,c);
       if(hb&&rs<0) rs=c;
       else if(!hb&&rs>=0){
-        const x1=ox+rs*ts,x2=ox+c*ts;
+        const x1=ox+rs*ts,x2=ox+c*ts,len=x2-x1;
         ctx.beginPath();
         for(let px=x1;px<=x2;px+=step){
-          const py=yBase+wallTurbPx(px,t,off);
+          const frac=(px-x1)/len;
+          const env=Math.sin(frac*Math.PI);
+          const py=yBase+wallTurbPx(px,t,off)*env;
           px===x1?ctx.moveTo(px,py):ctx.lineTo(px,py);
         }
-        const py=yBase+wallTurbPx(x2,t,off);
-        ctx.lineTo(x2,py);
+        ctx.lineTo(x2,yBase);
         ctx.stroke();
         rs=-1;
       }
@@ -622,14 +623,15 @@ function drawWallOutlines(){
       const vb=r<ROWS&&isW(r,c-1)!==isW(r,c);
       if(vb&&rs<0) rs=r;
       else if(!vb&&rs>=0){
-        const y1=oy+rs*ts,y2=oy+r*ts;
+        const y1=oy+rs*ts,y2=oy+r*ts,len=y2-y1;
         ctx.beginPath();
         for(let py=y1;py<=y2;py+=step){
-          const px=xBase+wallTurbPx(py,t,off);
+          const frac=(py-y1)/len;
+          const env=Math.sin(frac*Math.PI);
+          const px=xBase+wallTurbPx(py,t,off)*env;
           py===y1?ctx.moveTo(px,py):ctx.lineTo(px,py);
         }
-        const px=xBase+wallTurbPx(y2,t,off);
-        ctx.lineTo(px,y2);
+        ctx.lineTo(xBase,y2);
         ctx.stroke();
         rs=-1;
       }
