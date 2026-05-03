@@ -490,8 +490,9 @@ function nextLevel(){
 /* drawing */
 function wallTurbPx(pos,t,off){
   const prog=totalPellets>0?1-pelletCount/totalPellets:0;
-  const ampScale=0.25+prog*1.0;
-  const spdScale=0.25+prog*1.5;
+  const curve=prog*prog;
+  const ampScale=0.05+curve*1.2;
+  const spdScale=0.05+curve*2;
   return (Math.sin(pos*0.035+t*3.5*spdScale+off)*10+
     Math.sin(pos*0.06-t*4.8*spdScale+off)*7+
     Math.cos(pos*0.09+t*5.5*spdScale+off)*5)*ampScale;
