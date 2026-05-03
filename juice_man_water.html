@@ -64,6 +64,18 @@ let score=0,highScore=parseInt(localStorage.getItem('pacman_hi'))||0;
 let lives=3,level=1,combo=0,comboTime=0;
 let powerOn=false,powerTime=0,ghostChain=0;
 let bioFlash=0;
+let msgIdx=0,msgActive=null,msgTimer=0,impactFlash=0;
+const SURFER_MSGS=[
+  "DINGY START","EASY DOES IT","WARMING UP","BARELY A RIPPLE","NOT BAD FOR A TUESDAY",
+  "GETTING SOME SWELL","OKAY NOW WE'RE TALKING","WAX THE BOARD","FEELING THE BUZZ","NICE AND CHILLY",
+  "SHARKS NOTICE YOU","GETTING A LITTLE WILD","WOOOAH THERE","SPILLIN' SOME WATER","HOLD ON TIGHT",
+  "WAVES ARE PUMPIN'","YOU'RE PICKIN' UP SPEED","SHARKS ARE NERVOUS","THIS IS GETTING REAL","STAY THE COURSE",
+  "MAJOR SWELL INCOMING","LOOK AT YOU GO","ABSOLUTELY WRECKING IT","THE OCEAN IS SCREAMING","YOU ARE THE STORM",
+  "SHARKS ARE PANICKING","WAVES GOING BERSERK","PURE CHAOS MODE","UNHINGED SURFING","ABSOLUTELY FERAL",
+  "THE OCEAN IS TERRIFIED","WAVES ARE CRYING","SHARKS ARE QUITTING","TOTAL MELTDOWN","ABSOLUTE BEDLAM",
+  "YOU ARE BEYOND RECKONING","THE SEA ITSELF TREMBLES","GOD OF SURF","APEX PREDATOR OF WAVES","LEGENDARY SURFER",
+  "THE OCEAN BOWS TO YOU","TRANSCENDENT SURFING","YOU ARE THE RECKONING","ABSOLUTE SUPREMACY","THE SEA IS YOURS"
+];
 let shakeAmt=0,shakeX=0,shakeY=0;
 let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
@@ -462,12 +474,13 @@ canvas.addEventListener('touchend',e=>{
 
 /* game flow */
 function startGame(){
-  score=0;lives=3;level=1;combo=0;comboTime=0;powerOn=false;ghostChain=0;
+  score=0;lives=3;level=1;combo=0;comboTime=0;powerOn=false;ghostChain=0;msgIdx=0;msgActive=null;msgTimer=0;
   initMaze();pm=createPM();ghosts=[];
   for(let i=0;i<4;i++) ghosts[i]=createGhost(i);
   fruit=null;fruitSpawned=false;fruitTime=0;state='playing';
 }
 function nextLevel(){
+  msgIdx=0;msgActive=null;msgTimer=0;
   level++;initMaze();resetPos();
   pm.spd=BASE_SPEED+level*SPEED_INC;
   for(const g of ghosts) g.spd=(BASE_SPEED+level*SPEED_INC)*GHOST_SPEED_RATIO;
@@ -476,9 +489,31 @@ function nextLevel(){
 
 /* drawing */
 function wallTurbPx(pos,t,off){
-  return Math.sin(pos*0.035+t*3.5+off)*10+
-    Math.sin(pos*0.06-t*4.8+off)*7+
-    Math.cos(pos*0.09+t*5.5+off)*5;
+  const prog=totalPellets>0?1-pelletCount/totalPellets:0;
+  const ampScale=1+prog*0.8;
+  const spdScale=1+prog*1.2;
+  return (Math.sin(pos*0.035+t*3.5*spdScale+off)*10+
+    Math.sin(pos*0.06-t*4.8*spdScale+off)*7+
+    Math.cos(pos*0.09+t*5.5*spdScale+off)*5)*ampScale;
+}
+function checkMessages(){
+  if(totalPellets<=0||msgIdx>=SURFER_MSGS.length) return;
+  const prog=1-pelletCount/totalPellets;
+  const threshold=msgIdx/SURFER_MSGS.length;
+  if(prog>=threshold){
+    msgActive=SURFER_MSGS[msgIdx];
+    msgTimer=2.5;
+    impactFlash=0.6;
+    triggerShake(3+msgIdx*0.3);
+    msgIdx++;
+  }
+}
+function updMessages(d){
+  if(msgTimer>0){
+    msgTimer-=d;
+    if(msgTimer<=0) msgActive=null;
+  }
+  if(impactFlash>0) impactFlash=Math.max(0,impactFlash-d*3);
 }
 function drawBioOrb(r,c,cx,cy,s){
   const t=globalTime;
@@ -1142,11 +1177,12 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);updBioFlash(d);updBubbleFx(d);updShake(d);updWarpRipples(d);updRisingBubbles(d);updFish(d);updScorePopups(d);
+  updPlankton(d);updWake(d);updRipples(d);updSharkRipples(d);updCollectFx(d);updBioFlash(d);updBubbleFx(d);updShake(d);updWarpRipples(d);updRisingBubbles(d);updFish(d);updScorePopups(d);updMessages(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
+    checkMessages();
   }
 }
 
@@ -1758,6 +1794,32 @@ function drawCoral(){
 }
 
 /* vignette overlay */
+function drawSurferMessage(){
+  if(!msgActive) return;
+  const w=canvas.width,h=canvas.height,t=globalTime;
+  const prog=totalPellets>0?1-pelletCount/totalPellets:0;
+  const fadeIn=Math.min(1,(2.5-msgTimer)*4);
+  const scale=1+prog*1.5;
+  const shake=msgTimer<0.5?Math.sin(t*30)*5*prog:0;
+  ctx.save();
+  ctx.translate(w/2+shake,h/2+Math.sin(t*20)*3*prog);
+  ctx.rotate(Math.sin(t*8)*0.03*prog);
+  ctx.globalAlpha=fadeIn;
+  const fontSize=Math.min(48+prog*32,w*0.08)*scale;
+  ctx.font=`bold ${fontSize}px monospace`;
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillStyle='#000';
+  ctx.fillText(msgActive,2,2);
+  const hue=30+prog*200;
+  ctx.fillStyle=`hsl(${hue},100%,70%)`;
+  ctx.shadowColor=`hsl(${hue},100%,50%)`;
+  ctx.shadowBlur=15+prog*25;
+  ctx.fillText(msgActive,0,0);
+  ctx.shadowBlur=0;
+  ctx.restore();
+  ctx.globalAlpha=1;
+}
 function drawVignette(){
   ctx.fillStyle=vigGrad;
   ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -1785,9 +1847,16 @@ function draw(){
   drawWarpRipples();
   drawRisingBubbles();
   drawScorePopups();
+  drawSurferMessage();
   ctx.restore();
   drawVignette();
   drawHUD();drawMobile();
+  if(impactFlash>0){
+    ctx.globalAlpha=impactFlash*0.7;
+    ctx.fillStyle='#fff';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=1;
+  }
   if(bioFlash>0){
     ctx.globalAlpha=bioFlash*0.8;
     ctx.fillStyle='#88ffee';
