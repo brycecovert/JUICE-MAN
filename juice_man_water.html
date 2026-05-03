@@ -1809,13 +1809,28 @@ function drawSurferMessage(){
   ctx.font=`bold ${fontSize}px monospace`;
   ctx.textAlign='center';
   ctx.textBaseline='middle';
-  ctx.fillStyle='#000';
-  ctx.fillText(msgActive,2,2);
+  const maxW=w*0.85;
+  const words=msgActive.split(' ');
+  const lines=[];
+  let cur='';
+  for(const wd of words){
+    const test=cur?cur+' '+wd:wd;
+    if(ctx.measureText(test).width>maxW&&cur){lines.push(cur);cur=wd;}
+    else cur=test;
+  }
+  if(cur) lines.push(cur);
+  const lineH=fontSize*1.2;
+  const startY=-(lines.length-1)*lineH/2;
   const hue=30+prog*200;
-  ctx.fillStyle=`hsl(${hue},100%,70%)`;
-  ctx.shadowColor=`hsl(${hue},100%,50%)`;
-  ctx.shadowBlur=15+prog*25;
-  ctx.fillText(msgActive,0,0);
+  for(let i=0;i<lines.length;i++){
+    const ly=startY+i*lineH;
+    ctx.fillStyle='#000';
+    ctx.fillText(lines[i],2,ly+2);
+    ctx.fillStyle=`hsl(${hue},100%,70%)`;
+    ctx.shadowColor=`hsl(${hue},100%,50%)`;
+    ctx.shadowBlur=15+prog*25;
+    ctx.fillText(lines[i],0,ly);
+  }
   ctx.shadowBlur=0;
   ctx.restore();
   ctx.globalAlpha=1;
