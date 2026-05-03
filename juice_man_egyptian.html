@@ -103,6 +103,10 @@ let sandDrips=[];
 let djetEcho=[];
 let wallBreathPhase=0;
 let sphinxGlow={left:0,right:0};
+let scorchTrail=[];
+let spiritShockwaves=[];
+let nileFlood={active:false,timer:0,y:0};
+let sacredGeoAngle=0;
 
 /* resize */
 function resize(){
@@ -152,66 +156,6 @@ function initTorches(){
     {gx:COLS-1,gy:ROWS-2,phase:0.8,freq:4.5},
     {gx:10,gy:0,phase:3.1,freq:3.2}
   ];
-}
-function drawSphinx(sx,sy,sz,facingLeft){
-  const s=sz;
-  ctx.save();
-  if(facingLeft) {ctx.translate(sx+s,0);ctx.scale(-1,1);}
-  else ctx.translate(sx,0);
-  ctx.fillStyle=C.STONE_FACE;
-  ctx.beginPath();ctx.moveTo(s*0.1,s*0.9);ctx.lineTo(s*0.1,s*0.55);ctx.lineTo(s*0.35,s*0.55);ctx.lineTo(s*0.35,s*0.9);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.65,s*0.9);ctx.lineTo(s*0.65,s*0.55);ctx.lineTo(s*0.9,s*0.55);ctx.lineTo(s*0.9,s*0.9);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.15,s*0.55);ctx.lineTo(s*0.15,s*0.4);ctx.lineTo(s*0.85,s*0.4);ctx.lineTo(s*0.85,s*0.55);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.25,s*0.4);ctx.lineTo(s*0.25,s*0.15);ctx.lineTo(s*0.75,s*0.15);ctx.lineTo(s*0.75,s*0.4);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.2,s*0.15);ctx.lineTo(s*0.3,s*0.02);ctx.lineTo(s*0.45,s*0.15);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.55,s*0.15);ctx.lineTo(s*0.7,s*0.02);ctx.lineTo(s*0.8,s*0.15);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.1,s*0.4);ctx.lineTo(s*0.02,s*0.35);ctx.lineTo(s*0.1,s*0.25);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.9,s*0.4);ctx.lineTo(s*0.98,s*0.35);ctx.lineTo(s*0.9,s*0.25);ctx.closePath();ctx.fill();
-  ctx.fillStyle=C.STONE_HIGHLIGHT;
-  ctx.fillRect(s*0.2,s*0.08,s*0.6,s*0.03);
-  ctx.fillRect(s*0.15,s*0.37,s*0.7,s*0.03);
-  ctx.restore();
-}
-function drawSphinxGlow(sx,sy,sz,intensity){
-  if(intensity<=0.01) return;
-  const s=sz,cx=sx+s*0.5,cy=sy+s*0.3;
-  ctx.save();ctx.globalAlpha=intensity*0.4;
-  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,s*0.5);
-  sg.addColorStop(0,C.GOLD_BRIGHT);sg.addColorStop(1,'transparent');
-  ctx.fillStyle=sg;ctx.fillRect(sx-s*0.2,sy-s*0.2,s*1.4,s*1.4);
-  ctx.globalAlpha=intensity*0.8;ctx.fillStyle=C.GOLD_BRIGHT;
-  ctx.beginPath();ctx.arc(cx-s*0.12,cy,s*0.04,0,Math.PI*2);ctx.arc(cx+s*0.12,cy,s*0.04,0,Math.PI*2);ctx.fill();
-  ctx.restore();
-}
-function drawSphinx(sx,sy,sz,facingLeft){
-  const s=sz;
-  ctx.save();
-  if(facingLeft) {ctx.translate(sx+s,0);ctx.scale(-1,1);}
-  else ctx.translate(sx,0);
-  ctx.fillStyle=C.STONE_FACE;
-  ctx.beginPath();ctx.moveTo(s*0.1,s*0.9);ctx.lineTo(s*0.1,s*0.55);ctx.lineTo(s*0.35,s*0.55);ctx.lineTo(s*0.35,s*0.9);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.65,s*0.9);ctx.lineTo(s*0.65,s*0.55);ctx.lineTo(s*0.9,s*0.55);ctx.lineTo(s*0.9,s*0.9);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.15,s*0.55);ctx.lineTo(s*0.15,s*0.4);ctx.lineTo(s*0.85,s*0.4);ctx.lineTo(s*0.85,s*0.55);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.25,s*0.4);ctx.lineTo(s*0.25,s*0.15);ctx.lineTo(s*0.75,s*0.15);ctx.lineTo(s*0.75,s*0.4);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.2,s*0.15);ctx.lineTo(s*0.3,s*0.02);ctx.lineTo(s*0.45,s*0.15);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.55,s*0.15);ctx.lineTo(s*0.7,s*0.02);ctx.lineTo(s*0.8,s*0.15);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.1,s*0.4);ctx.lineTo(s*0.02,s*0.35);ctx.lineTo(s*0.1,s*0.25);ctx.closePath();ctx.fill();
-  ctx.beginPath();ctx.moveTo(s*0.9,s*0.4);ctx.lineTo(s*0.98,s*0.35);ctx.lineTo(s*0.9,s*0.25);ctx.closePath();ctx.fill();
-  ctx.fillStyle=C.STONE_HIGHLIGHT;
-  ctx.fillRect(s*0.2,s*0.08,s*0.6,s*0.03);
-  ctx.fillRect(s*0.15,s*0.37,s*0.7,s*0.03);
-  ctx.restore();
-}
-function drawSphinxGlow(sx,sy,sz,intensity){
-  if(intensity<=0.01) return;
-  const s=sz,cx=sx+s*0.5,cy=sy+s*0.3;
-  ctx.save();ctx.globalAlpha=intensity*0.4;
-  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,s*0.5);
-  sg.addColorStop(0,C.GOLD_BRIGHT);sg.addColorStop(1,'transparent');
-  ctx.fillStyle=sg;ctx.fillRect(sx-s*0.2,sy-s*0.2,s*1.4,s*1.4);
-  ctx.globalAlpha=intensity*0.8;ctx.fillStyle=C.GOLD_BRIGHT;
-  ctx.beginPath();ctx.arc(cx-s*0.12,cy,s*0.04,0,Math.PI*2);ctx.arc(cx+s*0.12,cy,s*0.04,0,Math.PI*2);ctx.fill();
-  ctx.restore();
 }
 function drawSphinx(sx,sy,sz,facingLeft){
   const s=sz;
@@ -366,6 +310,7 @@ function updPM(d){
     if(p.prog>=ts){
       p.gx=p.fx;p.gy=p.fy;p.gx=wrap(p.gx);p.x=p.gx;p.y=p.gy;p.moving=false;p.prog=0;
       collect(p.gx,p.gy);
+      scorchTrail.push({gx:p.gx,gy:p.gy,life:2.5,maxLife:2.5});
     }else{
       const t=p.prog/ts;
       p.x=p.gx+(p.fx-p.gx)*t;
@@ -398,6 +343,7 @@ function collect(gx,gy){
     if(pelletCount<=0){
       state='levelComplete';
       triggerSoulAscend();triggerHieroCascade();
+      nileFlood={active:true,timer:3,y:oy+ROWS*ts};
     }
   }
   if(cell===T_POWER){
@@ -510,7 +456,11 @@ function updGhost(g,d){
 /* power */
 function doPower(){
   powerOn=true;powerTime=POWER_DURATION;ghostChain=0;
-  for(const g of ghosts) if(!g.inHouse&&!g.eaten) g.scared=true;
+  for(const g of ghosts) if(!g.inHouse&&!g.eaten){
+    g.scared=true;
+    const gcx=tx(g.x)+ts/2,gcy=ty(g.y)+ts/2;
+    spiritShockwaves.push({x:gcx,y:gcy,radius:0,maxRadius:ts*4,timer:0.8,maxTimer:0.8,col:SPIRIT_COLS[g.idx]});
+  }
 }
 function updPower(d){
   if(!powerOn) return;
@@ -716,7 +666,8 @@ function drawMaze(){
       if(cell===T_PELLET){
         const rot=globalTime*Math.PI*0.5;
         const pulse=0.7+0.3*Math.sin(globalTime*3+c+r);
-        ctx.save();ctx.globalAlpha=pulse;ctx.translate(cx2,cy2);ctx.rotate(rot);
+        const bob=Math.sin(globalTime*2+c*0.7+r*0.5)*ts*0.06;
+        ctx.save();ctx.globalAlpha=pulse;ctx.translate(cx2,cy2+bob);ctx.rotate(rot);
         ctx.strokeStyle=C.GOLD_AMBER;ctx.lineWidth=Math.max(1,ts*0.04);
         ctx.beginPath();ctx.arc(0,-ts*0.1,ts*0.06,0,Math.PI*2);ctx.stroke();
         ctx.beginPath();ctx.moveTo(0,-ts*0.04);ctx.lineTo(0,ts*0.12);ctx.moveTo(-ts*0.06,ts*0.02);ctx.lineTo(ts*0.06,ts*0.02);ctx.stroke();
@@ -1146,6 +1097,14 @@ function update(d){
     }
   }
   sphinxGlow.left*=Math.pow(0.95,d*60);sphinxGlow.right*=Math.pow(0.95,d*60);
+  sacredGeoAngle+=d*0.3;
+  wallBreathPhase+=d*1.57;
+  for(let i=scorchTrail.length-1;i>=0;i--){scorchTrail[i].life-=d;if(scorchTrail[i].life<=0) scorchTrail.splice(i,1);}
+  for(let i=spiritShockwaves.length-1;i>=0;i--){
+    const sw=spiritShockwaves[i];sw.timer-=d;sw.radius=sw.maxRadius*(1-sw.timer/sw.maxTimer);
+    if(sw.timer<=0) spiritShockwaves.splice(i,1);
+  }
+  if(nileFlood.active){nileFlood.timer-=d;nileFlood.y-=120*d;if(nileFlood.timer<=0&&nileFlood.y<oy-ts) nileFlood.active=false;}
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -1191,9 +1150,24 @@ function draw(){
   drawSphinxGlow(leftSx,sphY,sphW,sphinxGlow.left);
   drawSphinxGlow(rightSx,sphY,sphW,sphinxGlow.right);
   drawMaze();
+  for(const st of scorchTrail){
+    const a=st.life/st.maxLife*0.3;
+    const sx2=tx(st.gx),sy2=ty(st.gy);
+    ctx.save();ctx.globalAlpha=a;
+    const scg=ctx.createRadialGradient(sx2+ts/2,sy2+ts/2,0,sx2+ts/2,sy2+ts/2,ts*0.5);
+    scg.addColorStop(0,C.GOLD_AMBER);scg.addColorStop(1,'transparent');
+    ctx.fillStyle=scg;ctx.fillRect(sx2,sy2,ts,ts);
+    ctx.restore();
+  }
   drawPM();
   for(const g of ghosts) drawGhost(g);
   drawParticles();
+  for(const torch of torches){
+    const tpx=tx(torch.gx)+ts/2,tpy=ty(torch.gy)+ts/2;
+    if(parts.length<MAX_PARTICLES&&Math.random()<0.3){
+      parts.push({x:tpx+(Math.random()-0.5)*ts*0.3,y:tpy+(Math.random()-0.5)*ts*0.3,vx:(Math.random()-0.5)*8,vy:-25-Math.random()*20,life:0.8+Math.random()*0.5,maxLife:1.3,col:Math.random()>0.5?C.TORCH_AMBER:C.TORCH_ORANGE,size:1+Math.random()*2});
+    }
+  }
   for(const torch of torches){
     const tpx=tx(torch.gx)+ts/2,tpy=ty(torch.gy)+ts/2;
     const flicker=0.6+0.4*Math.sin(globalTime*torch.freq*2+torch.phase);
@@ -1212,6 +1186,47 @@ function draw(){
       ctx.fillStyle=C.GOLD_BRIGHT;ctx.fillRect(-4,0,canvas.width,canvas.height);
       ctx.fillStyle=C.AZURE_DIVINE;ctx.fillRect(4,0,canvas.width,canvas.height);
     }
+    ctx.globalAlpha=1;
+  }
+  if(powerOn){
+    const mazeCx=ox+COLS*ts/2,mazeCy=oy+ROWS*ts/2;
+    const mandalaR=Math.min(COLS*ts,ROWS*ts)*0.45;
+    ctx.save();ctx.translate(mazeCx,mazeCy);ctx.rotate(sacredGeoAngle);
+    ctx.globalAlpha=0.12+0.05*Math.sin(globalTime*3);ctx.strokeStyle=C.GOLD_BRIGHT;ctx.lineWidth=1.5;
+    for(let i=0;i<6;i++){
+      const a=i*Math.PI/3;
+      ctx.beginPath();ctx.arc(Math.cos(a)*mandalaR*0.4,Math.sin(a)*mandalaR*0.4,mandalaR*0.4,0,Math.PI*2);ctx.stroke();
+    }
+    ctx.beginPath();ctx.arc(0,0,mandalaR*0.4,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,mandalaR,0,Math.PI*2);ctx.stroke();
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6;
+      ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*mandalaR,Math.sin(a)*mandalaR);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for(const sw of spiritShockwaves){
+    const sa=1-sw.timer/sw.maxTimer;
+    ctx.globalAlpha=(1-sa)*0.6;ctx.strokeStyle=sw.col;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(sw.x,sw.y,sw.radius,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  if(nileFlood.active){
+    const floodH=ts*2;
+    const ng=ctx.createLinearGradient(0,nileFlood.y-floodH,0,nileFlood.y);
+    ng.addColorStop(0,'transparent');ng.addColorStop(0.5,C.AZURE_DIVINE);ng.addColorStop(1,C.GOLD_AMBER);
+    ctx.globalAlpha=0.4;ctx.fillStyle=ng;ctx.fillRect(ox,nileFlood.y-floodH,COLS*ts,floodH);
+    for(let i=0;i<15;i++){
+      const lx=ox+Math.random()*COLS*ts,ly=nileFlood.y-Math.random()*floodH;
+      ctx.globalAlpha=0.2+Math.random()*0.3;ctx.fillStyle=C.LOTUS_PINK;
+      ctx.beginPath();ctx.arc(lx,ly,2+Math.random()*3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  const drumPulse=0.5+0.5*Math.sin(globalTime*2*Math.PI);
+  if(drumPulse>0.95){
+    ctx.globalAlpha=(drumPulse-0.95)*2*0.03;
+    ctx.fillStyle=C.GOLD_AMBER;ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.globalAlpha=1;
   }
   for(const sw of sacredWaves){
