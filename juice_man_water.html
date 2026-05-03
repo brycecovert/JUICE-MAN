@@ -66,15 +66,15 @@ let powerOn=false,powerTime=0,ghostChain=0;
 let bioFlash=0;
 let msgIdx=0,msgActive=null,msgTimer=0,impactFlash=0;
 const SURFER_MSGS=[
-  "DINGY START","EASY DOES IT","WARMING UP","BARELY A RIPPLE","NOT BAD FOR A TUESDAY",
-  "GETTING SOME SWELL","OKAY NOW WE'RE TALKING","WAX THE BOARD","FEELING THE BUZZ","NICE AND CHILLY",
-  "SHARKS NOTICE YOU","GETTING A LITTLE WILD","WOOOAH THERE","SPILLIN' SOME WATER","HOLD ON TIGHT",
-  "WAVES ARE PUMPIN'","YOU'RE PICKIN' UP SPEED","SHARKS ARE NERVOUS","THIS IS GETTING REAL","STAY THE COURSE",
-  "MAJOR SWELL INCOMING","LOOK AT YOU GO","ABSOLUTELY WRECKING IT","THE OCEAN IS SCREAMING","YOU ARE THE STORM",
-  "SHARKS ARE PANICKING","WAVES GOING BERSERK","PURE CHAOS MODE","UNHINGED SURFING","ABSOLUTELY FERAL",
-  "THE OCEAN IS TERRIFIED","WAVES ARE CRYING","SHARKS ARE QUITTING","TOTAL MELTDOWN","ABSOLUTE BEDLAM",
-  "YOU ARE BEYOND RECKONING","THE SEA ITSELF TREMBLES","GOD OF SURF","APEX PREDATOR OF WAVES","LEGENDARY SURFER",
-  "THE OCEAN BOWS TO YOU","TRANSCENDENT SURFING","YOU ARE THE RECKONING","ABSOLUTE SUPREMACY","THE SEA IS YOURS"
+  "dingy start","easy does it","warming up","barely a ripple","not bad for a tuesday",
+  "getting some swell","okay now we're talking","wax the board","feeling the buzz","nice and chilly",
+  "sharks notice you","getting a little wild","woooah there","spillin' some water","hold on tight",
+  "waves are pumpin'","you're pickin' up speed","sharks are nervous","this is getting real","stay the course",
+  "major swell incoming","look at you go","absolutely wrecking it","the ocean is screaming","you are the storm",
+  "sharks are panicking","waves going berserk","pure chaos mode","unhinged surfing","absolutely feral",
+  "the ocean is terrified","waves are crying","sharks are quitting","total meltdown","absolute bedlam",
+  "you are beyond reckoning","the sea itself trembles","god of surf","apex predator of waves","legendary surfer",
+  "the ocean bows to you","transcendent surfing","you are the reckoning","absolute supremacy","the sea is yours"
 ];
 let shakeAmt=0,shakeX=0,shakeY=0;
 let maze=[],pelletCount=0,totalPellets=0;
@@ -502,10 +502,14 @@ function checkMessages(){
   const prog=1-pelletCount/totalPellets;
   const threshold=msgIdx/SURFER_MSGS.length;
   if(prog>=threshold){
-    msgActive=SURFER_MSGS[msgIdx];
+    const p=msgIdx/SURFER_MSGS.length;
+    let txt=SURFER_MSGS[msgIdx];
+    if(p>0.7) txt=txt.toUpperCase();
+    else if(p>0.4) txt=txt.split(' ').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
+    msgActive=txt;
     msgTimer=2.5;
-    impactFlash=0.6;
-    triggerShake(3+msgIdx*0.3);
+    impactFlash=p*1.2;
+    triggerShake(p*10);
     msgIdx++;
   }
 }
@@ -1806,7 +1810,7 @@ function drawSurferMessage(){
   ctx.translate(w/2+shake,h/2+Math.sin(t*20)*3*prog);
   ctx.rotate(Math.sin(t*8)*0.03*prog);
   ctx.globalAlpha=fadeIn;
-  const fontSize=Math.min(48+prog*32,w*0.08)*scale;
+  const fontSize=Math.min(20+prog*60,w*0.08)*scale;
   ctx.font=`bold ${fontSize}px monospace`;
   ctx.textAlign='center';
   ctx.textBaseline='middle';
