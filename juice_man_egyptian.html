@@ -99,6 +99,10 @@ let deathShatter={active:false,timer:0,parts:[]};
 let soulAscend={active:false,timer:0,parts:[]};
 let hieroCascade={active:false,timer:0,symbols:[]};
 let lastDir={x:0,y:-1};
+let sandDrips=[];
+let djetEcho=[];
+let wallBreathPhase=0;
+let sphinxGlow={left:0,right:0};
 
 /* resize */
 function resize(){
@@ -148,6 +152,96 @@ function initTorches(){
     {gx:COLS-1,gy:ROWS-2,phase:0.8,freq:4.5},
     {gx:10,gy:0,phase:3.1,freq:3.2}
   ];
+}
+function drawSphinx(sx,sy,sz,facingLeft){
+  const s=sz;
+  ctx.save();
+  if(facingLeft) {ctx.translate(sx+s,0);ctx.scale(-1,1);}
+  else ctx.translate(sx,0);
+  ctx.fillStyle=C.STONE_FACE;
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.9);ctx.lineTo(s*0.1,s*0.55);ctx.lineTo(s*0.35,s*0.55);ctx.lineTo(s*0.35,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.65,s*0.9);ctx.lineTo(s*0.65,s*0.55);ctx.lineTo(s*0.9,s*0.55);ctx.lineTo(s*0.9,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.15,s*0.55);ctx.lineTo(s*0.15,s*0.4);ctx.lineTo(s*0.85,s*0.4);ctx.lineTo(s*0.85,s*0.55);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.25,s*0.4);ctx.lineTo(s*0.25,s*0.15);ctx.lineTo(s*0.75,s*0.15);ctx.lineTo(s*0.75,s*0.4);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.2,s*0.15);ctx.lineTo(s*0.3,s*0.02);ctx.lineTo(s*0.45,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.55,s*0.15);ctx.lineTo(s*0.7,s*0.02);ctx.lineTo(s*0.8,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.4);ctx.lineTo(s*0.02,s*0.35);ctx.lineTo(s*0.1,s*0.25);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.9,s*0.4);ctx.lineTo(s*0.98,s*0.35);ctx.lineTo(s*0.9,s*0.25);ctx.closePath();ctx.fill();
+  ctx.fillStyle=C.STONE_HIGHLIGHT;
+  ctx.fillRect(s*0.2,s*0.08,s*0.6,s*0.03);
+  ctx.fillRect(s*0.15,s*0.37,s*0.7,s*0.03);
+  ctx.restore();
+}
+function drawSphinxGlow(sx,sy,sz,intensity){
+  if(intensity<=0.01) return;
+  const s=sz,cx=sx+s*0.5,cy=sy+s*0.3;
+  ctx.save();ctx.globalAlpha=intensity*0.4;
+  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,s*0.5);
+  sg.addColorStop(0,C.GOLD_BRIGHT);sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.fillRect(sx-s*0.2,sy-s*0.2,s*1.4,s*1.4);
+  ctx.globalAlpha=intensity*0.8;ctx.fillStyle=C.GOLD_BRIGHT;
+  ctx.beginPath();ctx.arc(cx-s*0.12,cy,s*0.04,0,Math.PI*2);ctx.arc(cx+s*0.12,cy,s*0.04,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+function drawSphinx(sx,sy,sz,facingLeft){
+  const s=sz;
+  ctx.save();
+  if(facingLeft) {ctx.translate(sx+s,0);ctx.scale(-1,1);}
+  else ctx.translate(sx,0);
+  ctx.fillStyle=C.STONE_FACE;
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.9);ctx.lineTo(s*0.1,s*0.55);ctx.lineTo(s*0.35,s*0.55);ctx.lineTo(s*0.35,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.65,s*0.9);ctx.lineTo(s*0.65,s*0.55);ctx.lineTo(s*0.9,s*0.55);ctx.lineTo(s*0.9,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.15,s*0.55);ctx.lineTo(s*0.15,s*0.4);ctx.lineTo(s*0.85,s*0.4);ctx.lineTo(s*0.85,s*0.55);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.25,s*0.4);ctx.lineTo(s*0.25,s*0.15);ctx.lineTo(s*0.75,s*0.15);ctx.lineTo(s*0.75,s*0.4);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.2,s*0.15);ctx.lineTo(s*0.3,s*0.02);ctx.lineTo(s*0.45,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.55,s*0.15);ctx.lineTo(s*0.7,s*0.02);ctx.lineTo(s*0.8,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.4);ctx.lineTo(s*0.02,s*0.35);ctx.lineTo(s*0.1,s*0.25);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.9,s*0.4);ctx.lineTo(s*0.98,s*0.35);ctx.lineTo(s*0.9,s*0.25);ctx.closePath();ctx.fill();
+  ctx.fillStyle=C.STONE_HIGHLIGHT;
+  ctx.fillRect(s*0.2,s*0.08,s*0.6,s*0.03);
+  ctx.fillRect(s*0.15,s*0.37,s*0.7,s*0.03);
+  ctx.restore();
+}
+function drawSphinxGlow(sx,sy,sz,intensity){
+  if(intensity<=0.01) return;
+  const s=sz,cx=sx+s*0.5,cy=sy+s*0.3;
+  ctx.save();ctx.globalAlpha=intensity*0.4;
+  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,s*0.5);
+  sg.addColorStop(0,C.GOLD_BRIGHT);sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.fillRect(sx-s*0.2,sy-s*0.2,s*1.4,s*1.4);
+  ctx.globalAlpha=intensity*0.8;ctx.fillStyle=C.GOLD_BRIGHT;
+  ctx.beginPath();ctx.arc(cx-s*0.12,cy,s*0.04,0,Math.PI*2);ctx.arc(cx+s*0.12,cy,s*0.04,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+function drawSphinx(sx,sy,sz,facingLeft){
+  const s=sz;
+  ctx.save();
+  if(facingLeft) {ctx.translate(sx+s,0);ctx.scale(-1,1);}
+  else ctx.translate(sx,0);
+  ctx.fillStyle=C.STONE_FACE;
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.9);ctx.lineTo(s*0.1,s*0.55);ctx.lineTo(s*0.35,s*0.55);ctx.lineTo(s*0.35,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.65,s*0.9);ctx.lineTo(s*0.65,s*0.55);ctx.lineTo(s*0.9,s*0.55);ctx.lineTo(s*0.9,s*0.9);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.15,s*0.55);ctx.lineTo(s*0.15,s*0.4);ctx.lineTo(s*0.85,s*0.4);ctx.lineTo(s*0.85,s*0.55);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.25,s*0.4);ctx.lineTo(s*0.25,s*0.15);ctx.lineTo(s*0.75,s*0.15);ctx.lineTo(s*0.75,s*0.4);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.2,s*0.15);ctx.lineTo(s*0.3,s*0.02);ctx.lineTo(s*0.45,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.55,s*0.15);ctx.lineTo(s*0.7,s*0.02);ctx.lineTo(s*0.8,s*0.15);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.1,s*0.4);ctx.lineTo(s*0.02,s*0.35);ctx.lineTo(s*0.1,s*0.25);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(s*0.9,s*0.4);ctx.lineTo(s*0.98,s*0.35);ctx.lineTo(s*0.9,s*0.25);ctx.closePath();ctx.fill();
+  ctx.fillStyle=C.STONE_HIGHLIGHT;
+  ctx.fillRect(s*0.2,s*0.08,s*0.6,s*0.03);
+  ctx.fillRect(s*0.15,s*0.37,s*0.7,s*0.03);
+  ctx.restore();
+}
+function drawSphinxGlow(sx,sy,sz,intensity){
+  if(intensity<=0.01) return;
+  const s=sz,cx=sx+s*0.5,cy=sy+s*0.3;
+  ctx.save();ctx.globalAlpha=intensity*0.4;
+  const sg=ctx.createRadialGradient(cx,cy,0,cx,cy,s*0.5);
+  sg.addColorStop(0,C.GOLD_BRIGHT);sg.addColorStop(1,'transparent');
+  ctx.fillStyle=sg;ctx.fillRect(sx-s*0.2,sy-s*0.2,s*1.4,s*1.4);
+  ctx.globalAlpha=intensity*0.8;ctx.fillStyle=C.GOLD_BRIGHT;
+  ctx.beginPath();ctx.arc(cx-s*0.12,cy,s*0.04,0,Math.PI*2);ctx.arc(cx+s*0.12,cy,s*0.04,0,Math.PI*2);ctx.fill();
+  ctx.restore();
 }
 function drawHiero(sym,x,y,sz){
   ctx.strokeStyle=C.GOLD_BRIGHT;ctx.lineWidth=Math.max(1,sz*0.04);ctx.beginPath();
@@ -312,6 +406,7 @@ function collect(gx,gy){
     divineFlash={active:true,timer:0.8,x:cx,y:cy};
     screenShake.intensity=15;
     sacredWaves.push({x:cx,y:cy,radius:0,timer:1.5,maxTime:1.5});
+    sphinxGlow.left=1;sphinxGlow.right=1;
     emitParticles(cx,cy,C.GOLD_BRIGHT,25,120,1.5,3);
     emitParticles(cx,cy,C.AZURE_DIVINE,15,100,1.2,2);
     scorePopups.push({x:cx,y:cy,text:'DIVINE',life:1.5,maxLife:1.5,size:22,phase:0});
@@ -445,6 +540,8 @@ function collisions(){
         const ptLabel=pts[Math.min(ghostChain-1,3)];
         scorePopups.push({x:gcx,y:gcy,text:`${ptLabel}`,life:1.5,maxLife:1.5,size:18+ghostChain*3,phase:0});
         screenShake.intensity=10+ghostChain*3;
+        sphinxGlow.left=Math.max(sphinxGlow.left,0.5+ghostChain*0.15);
+        sphinxGlow.right=Math.max(sphinxGlow.right,0.5+ghostChain*0.15);
         duatFlare={active:true,timer:0.6,col:spiritCol};
         if(ghostChain>=3){
           divineFlash={active:true,timer:0.4,x:gcx,y:gcy};
@@ -1048,6 +1145,7 @@ function update(d){
       }
     }
   }
+  sphinxGlow.left*=Math.pow(0.95,d*60);sphinxGlow.right*=Math.pow(0.95,d*60);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
@@ -1082,6 +1180,16 @@ function draw(){
     ctx.fillStyle=C.GOLD_AMBER;ctx.beginPath();ctx.arc(dp.x,dp.y,dp.size,0,Math.PI*2);ctx.fill();
   }
   ctx.globalAlpha=1;
+  const mazeW=COLS*ts,mazeH=ROWS*ts;
+  const sphW=Math.min(ts*1.5,canvas.width*0.1);
+  const sphH=mazeH*0.65;
+  const sphY=oy+(mazeH-sphH)/2;
+  const leftSx=ox-sphW-ts*0.5;
+  const rightSx=ox+mazeW+ts*0.5;
+  if(leftSx>-sphW) drawSphinx(leftSx,sphY,sphW,true);
+  if(rightSx<canvas.width) drawSphinx(rightSx,sphY,sphW,false);
+  drawSphinxGlow(leftSx,sphY,sphW,sphinxGlow.left);
+  drawSphinxGlow(rightSx,sphY,sphW,sphinxGlow.right);
   drawMaze();
   drawPM();
   for(const g of ghosts) drawGhost(g);
