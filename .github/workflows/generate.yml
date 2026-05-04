@@ -113,14 +113,7 @@ jobs:
           echo "Configuring OpenRouter provider..."
           # Write auth file directly for non-interactive CI
           mkdir -p ~/.local/share/opencode
-          cat > ~/.local/share/opencode/auth.json << AUTH
-          {
-            "openrouter": {
-              "type": "api",
-              "key": "${OPENROUTER_API_KEY}"
-            }
-          }
-          AUTH
+          printf '{"openrouter":{"type":"api","key":"%s"}}\n' "${OPENROUTER_API_KEY}" > ~/.local/share/opencode/auth.json
           echo "Provider configured"
           # Verify provider is set up
           opencode providers list
