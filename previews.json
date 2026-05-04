@@ -1,0 +1,20 @@
+[
+  {
+    "pr_number": 6,
+    "level": 1,
+    "version": 1,
+    "title": "PR #6 - Level 1 v1",
+    "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/test/rainbow-colors/levels/level_1_v1.html",
+    "status": "generated",
+    "updated_at": "2026-05-04T06:51:41.581Z"
+  },
+  {
+    "pr_number": 7,
+    "level": 1,
+    "version": 1,
+    "title": "PR #7 - Level 1 v1",
+    "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/feature/agent-browser-testing/levels/level_1_v1.html",
+    "status": "generated",
+    "updated_at": "2026-05-04T14:20:36.350Z"
+  }
+]

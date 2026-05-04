@@ -108,6 +108,16 @@ jobs:
           opencode --version
           echo "opencode installed successfully"
 
+      - name: Install agent-browser
+        run: |
+          echo "Installing agent-browser via npm..."
+          npm install -g agent-browser
+          which agent-browser
+          agent-browser --version
+          echo "Installing Chrome for agent-browser..."
+          agent-browser install --with-deps
+          echo "agent-browser installed successfully"
+
       - name: Configure OpenRouter provider
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -123,60 +133,24 @@ jobs:
       - name: Generate new version with AI
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          TARGET_FILE: "levels/level_${{ steps.find_spec.outputs.level }}_v${{ steps.find_spec.outputs.version }}.html"
+          SPEC_FILE: "${{ steps.find_spec.outputs.spec_file }}"
         run: |
-          SPEC_FILE="${{ steps.find_spec.outputs.spec_file }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
-          
           echo "================================"
           echo "AI GENERATION STEP"
           echo "================================"
           echo ""
-          echo "Generating prompt file with @file references..."
-          
-          TARGET_FILE="levels/level_${{ steps.find_spec.outputs.level }}_v${VERSION}.html"
-          
-          # Create prompt file instructing incremental edits
-          printf '%s\n' \
-            'You are an expert game developer specializing in arcade games and visual effects (juice).' \
-            '' \
-            "Your task: Edit the file ${TARGET_FILE} to apply the spec below. Make incremental changes to implement the spec while preserving all existing functionality." \
-            '' \
-            'CRITICAL RULES:' \
-            '1. Edit the existing HTML file directly - do not create a new file' \
-            '2. Preserve all existing game mechanics, state machine, collision detection, scoring' \
-            '3. Only ADD visual/audio effects as specified. do not remove existing functionality' \
-            '4. Follow all AGENTS.md conventions strictly (naming, particle budgets, time handling, etc.)' \
-            '5. Do not add code comments' \
-            '6. The code must be dense and production-ready' \
-            '7. Make minimal, surgical edits - change only what is needed to implement the spec' \
-            '' \
-            'Here are the reference files:' \
-            '' \
-            '@AGENTS.md' \
-            '' \
-            "@${SPEC_FILE}" \
-            '' \
-            "@${TARGET_FILE}" \
-            '' \
-            'Instructions:' \
-            '- Read AGENTS.md for coding conventions (MUST follow all rules)' \
-            '- Read the spec to understand what juice effects to add' \
-            '- Read the current implementation in the target file' \
-            '- Make incremental edits to implement the spec' \
-            '- Ensure the game still works: movement, pellet eating, ghost AI, scoring, state transitions' \
-            '- After every edit, verify JavaScript syntax: extract <script> contents from the HTML into /tmp/extracted.js and run `node --check /tmp/extracted.js`. If it fails, fix the syntax error immediately before proceeding' \
-            > /tmp/generation_prompt.txt
-          
-          echo "Prompt file created at /tmp/generation_prompt.txt"
-          echo "Prompt size: $(wc -c < /tmp/generation_prompt.txt) bytes"
+          echo "Invoking juice-man-generate skill..."
+          echo "TARGET_FILE: $TARGET_FILE"
+          echo "SPEC_FILE: $SPEC_FILE"
           echo ""
           
-          # Run opencode with OpenRouter - it will edit the file directly
+          # Run opencode with skill invocation
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
             -m openrouter/qwen/qwen3.6-plus \
-            --title "Generate JUICE-MAN v${VERSION}" \
-            < /tmp/generation_prompt.txt
+            --title "Generate JUICE-MAN v${{ steps.find_spec.outputs.version }}" \
+            <<< "/juice-man-generate"
           echo "Generation complete"
 
       - name: Verify generated file
@@ -200,7 +174,7 @@ jobs:
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
 
           echo "Checking JavaScript syntax in $OUTPUT_FILE..."
-          node -e "const fs=require('fs');const js=fs.readFileSync('${OUTPUT_FILE}','utf8').match(/<script>([\\s\\S]*?)<\\/script>/)[1];fs.writeFileSync('/tmp/extracted.js',js);" || {
+          node -e "const fs=require('fs');const js=fs.readFileSync('${OUTPUT_FILE}','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];fs.writeFileSync('/tmp/extracted.js',js);" || {
             echo "ERROR: Failed to extract JavaScript from ${OUTPUT_FILE}"
             exit 1
           }
@@ -211,7 +185,139 @@ jobs:
           }
           echo "JavaScript syntax OK"
 
-      - name: Commit generated file to PR branch
+      - name: Browser test and validate
+        id: browser_test
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          SCREENSHOT_DIR="screenshots/level_${LEVEL}"
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
+          ERROR_LOG="/tmp/js_errors.txt"
+          CONSOLE_LOG="/tmp/console_logs.json"
+          
+          mkdir -p "$SCREENSHOT_DIR"
+          
+          echo "================================"
+          echo "BROWSER TEST STEP"
+          echo "================================"
+          echo "Testing file: $OUTPUT_FILE"
+          
+          # Open the HTML file in agent-browser
+          agent-browser --allow-file-access open "file://$PWD/$OUTPUT_FILE"
+          
+          # Wait 1 second for page to load
+          agent-browser wait 1000
+          
+          # Press space to start the game
+          agent-browser press Space
+          
+          # Wait another second for game to react
+          agent-browser wait 1000
+          
+          # Take screenshot
+          agent-browser screenshot "$SCREENSHOT_PATH"
+          echo "Screenshot saved to: $SCREENSHOT_PATH"
+          
+          # Collect JavaScript errors
+          agent-browser errors > "$ERROR_LOG" 2>&1 || true
+          echo "JS errors saved to: $ERROR_LOG"
+          
+          # Collect console logs
+          agent-browser console --json > "$CONSOLE_LOG" 2>&1 || true
+          echo "Console logs saved to: $CONSOLE_LOG"
+          
+          # Check if errors exist
+          ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
+          echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+          echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
+          echo "error_log=$ERROR_LOG" >> $GITHUB_OUTPUT
+          
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "WARNING: Found $ERROR_COUNT JavaScript errors"
+            cat "$ERROR_LOG"
+          else
+            echo "No JavaScript errors found"
+          fi
+          
+          # Close browser
+          agent-browser close
+          
+          echo "Browser test complete"
+
+      - name: Fix JavaScript errors with AI
+        if: steps.browser_test.outputs.error_count > 0
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          ERROR_LOG="${{ steps.browser_test.outputs.error_log }}"
+          
+          echo "================================"
+          echo "ERROR FIXING STEP"
+          echo "================================"
+          echo "Fixing JavaScript errors in: $OUTPUT_FILE"
+          echo ""
+          echo "Errors found:"
+          cat "$ERROR_LOG"
+          echo ""
+          
+          # Run opencode with skill invocation for error fixing
+          export OUTPUT_FILE="${OUTPUT_FILE}"
+          export ERROR_LOG="${ERROR_LOG}"
+          
+          echo "Invoking juice-man-fix skill..."
+          echo "OUTPUT_FILE: $OUTPUT_FILE"
+          echo "ERROR_LOG: $ERROR_LOG"
+          
+          OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
+            --dangerously-skip-permissions \
+            -m openrouter/qwen/qwen3.6-plus \
+            --title "Fix JS Errors in JUICE-MAN v${VERSION}" \
+            <<< "/juice-man-fix"
+          echo "Error fixing complete"
+
+      - name: Re-test after fix
+        if: steps.browser_test.outputs.error_count > 0
+        id: browser_test_2
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          SCREENSHOT_DIR="screenshots/level_${LEVEL}"
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
+          ERROR_LOG="/tmp/js_errors_fixed.txt"
+          
+          mkdir -p "$SCREENSHOT_DIR"
+          
+          echo "================================"
+          echo "RE-TEST AFTER FIX"
+          echo "================================"
+          
+          # Re-open and test
+          agent-browser --allow-file-access open "file://$PWD/$OUTPUT_FILE"
+          agent-browser wait 1000
+          agent-browser press Space
+          agent-browser wait 1000
+          agent-browser screenshot "$SCREENSHOT_PATH"
+          agent-browser errors > "$ERROR_LOG" 2>&1 || true
+          
+          ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
+          echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
+          echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
+          
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "WARNING: Still found $ERROR_COUNT JavaScript errors after fix attempt"
+            cat "$ERROR_LOG"
+          else
+            echo "All JavaScript errors fixed"
+          fi
+          
+          agent-browser close
+
+      - name: Commit generated file and screenshot to PR branch
         run: |
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
@@ -219,16 +325,91 @@ jobs:
           LEVEL="${{ steps.find_spec.outputs.level }}"
           VERSION="${{ steps.find_spec.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          SCREENSHOT_DIR="screenshots/level_${LEVEL}"
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
 
           git add "$OUTPUT_FILE"
+          
+          # Also add screenshot if it exists
+          if [ -f "$SCREENSHOT_PATH" ]; then
+            git add "$SCREENSHOT_PATH"
+          fi
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
             git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
             git push origin HEAD:${{ github.head_ref }}
-            echo "Committed and pushed generated file"
+            echo "Committed and pushed generated file and screenshot"
           fi
+
+      - name: Upload screenshot to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const level = '${{ steps.find_spec.outputs.level }}';
+            const version = '${{ steps.find_spec.outputs.version }}';
+            
+            const repo = context.repo.repo;
+            const owner = context.repo.owner;
+            const branch = context.payload.pull_request.head.ref;
+            
+            const screenshotUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.png?raw=true`;
+            
+            const errorCount = '${{ steps.browser_test.outputs.error_count }}';
+            const fixedErrorCount = '${{ steps.browser_test_2.outputs.error_count }}';
+            
+            let statusText = '';
+            if (fixedErrorCount && fixedErrorCount !== '') {
+              if (parseInt(fixedErrorCount) === 0) {
+                statusText = '✅ All JavaScript errors were fixed automatically';
+              } else {
+                statusText = `⚠️ ${fixedErrorCount} JavaScript errors remain after auto-fix attempt`;
+              }
+            } else if (parseInt(errorCount) === 0) {
+              statusText = '✅ No JavaScript errors detected';
+            } else {
+              statusText = `⚠️ ${errorCount} JavaScript errors detected (fix attempt made)`;
+            }
+            
+            // Create or update comment with screenshot
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber
+            });
+            
+            const screenshotComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('Browser Test Screenshot'));
+            
+            const body = `## 🖼️ Browser Test Screenshot
+            
+            Level: **${level}** | Version: **v${version}**
+            
+            ### Screenshot
+            ![JUICE-MAN Screenshot](${screenshotUrl})
+            
+            ### JavaScript Validation
+            ${statusText}
+            
+            ---
+            *Screenshot taken after pressing space to start the game.*`;
+            
+            if (screenshotComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: screenshotComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body
+              });
+            }
 
       - name: Update previews manifest
         run: |
