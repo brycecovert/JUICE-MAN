@@ -164,6 +164,7 @@ jobs:
             '- Read the current implementation in the target file' \
             '- Make incremental edits to implement the spec' \
             '- Ensure the game still works: movement, pellet eating, ghost AI, scoring, state transitions' \
+            '- After every edit, verify JavaScript syntax: extract <script> contents from the HTML into /tmp/extracted.js and run `node --check /tmp/extracted.js`. If it fails, fix the syntax error immediately before proceeding' \
             > /tmp/generation_prompt.txt
           
           echo "Prompt file created at /tmp/generation_prompt.txt"
@@ -192,15 +193,33 @@ jobs:
             exit 1
           fi
 
+      - name: Verify generated JavaScript syntax
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+
+          echo "Checking JavaScript syntax in $OUTPUT_FILE..."
+          node -e "const fs=require('fs');const js=fs.readFileSync('${OUTPUT_FILE}','utf8').match(/<script>([\\s\\S]*?)<\\/script>/)[1];fs.writeFileSync('/tmp/extracted.js',js);" || {
+            echo "ERROR: Failed to extract JavaScript from ${OUTPUT_FILE}"
+            exit 1
+          }
+          node --check /tmp/extracted.js || {
+            echo "ERROR: JavaScript syntax check failed"
+            cat -n /tmp/extracted.js | head -n 50
+            exit 1
+          }
+          echo "JavaScript syntax OK"
+
       - name: Commit generated file to PR branch
         run: |
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
-          
+
           LEVEL="${{ steps.find_spec.outputs.level }}"
           VERSION="${{ steps.find_spec.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          
+
           git add "$OUTPUT_FILE"
           
           if git diff --cached --quiet; then
