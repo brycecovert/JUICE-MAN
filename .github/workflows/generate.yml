@@ -1,0 +1,262 @@
+name: Generate JUICE-MAN Version
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  pages: write
+  id-token: write
+
+jobs:
+  validate-and-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+
+      - name: Find spec file in PR
+        id: find_spec
+        run: |
+          git fetch origin main --depth=1
+          SPEC_FILE=$(git diff --name-only origin/main...HEAD | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+          if [ -z "$SPEC_FILE" ]; then
+            echo "No spec file found in PR. Expected path: specs/level_N/vN.md"
+            exit 1
+          fi
+          echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
+          LEVEL=$(echo "$SPEC_FILE" | sed -E 's|specs/level_([0-9]+)/v[0-9]+\.md|\1|')
+          VERSION=$(echo "$SPEC_FILE" | sed -E 's|specs/level_[0-9]+/v([0-9]+)\.md|\1|')
+          echo "level=$LEVEL" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found spec: $SPEC_FILE (level $LEVEL, version $VERSION)"
+
+      - name: Validate spec word count
+        run: |
+          SPEC_FILE="${{ steps.find_spec.outputs.spec_file }}"
+          WORD_COUNT=$(wc -w < "$SPEC_FILE")
+          echo "Spec word count: $WORD_COUNT"
+          if [ "$WORD_COUNT" -gt 300 ]; then
+            echo "ERROR: Spec exceeds 300 words (found $WORD_COUNT)"
+            exit 1
+          fi
+          echo "Word count OK ($WORD_COUNT ≤ 300)"
+
+      - name: Validate version matches next_version
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          NEXT_VERSION_FILE="specs/level_${LEVEL}/next_version"
+          
+          # Fetch next_version from main branch
+          git show origin/main:${NEXT_VERSION_FILE} > /tmp/next_version_from_main 2>/dev/null || {
+            echo "ERROR: Could not read ${NEXT_VERSION_FILE} from main branch"
+            exit 1
+          }
+          EXPECTED_VERSION=$(cat /tmp/next_version_from_main | tr -d '[:space:]')
+          echo "Expected version (from main): $EXPECTED_VERSION"
+          echo "PR version: $VERSION"
+          
+          if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
+            echo "ERROR: Version mismatch. Expected v${EXPECTED_VERSION}, got v${VERSION}"
+            exit 1
+          fi
+          echo "Version match OK"
+
+      - name: Fetch previous version from main
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          CANONICAL_FILE="levels/level_${LEVEL}.html"
+          
+          if git show origin/main:${CANONICAL_FILE} > /tmp/previous_version.html 2>/dev/null; then
+            echo "Fetched previous version from main: ${CANONICAL_FILE}"
+            wc -l /tmp/previous_version.html
+          else
+            echo "WARNING: Could not find ${CANONICAL_FILE} on main branch"
+            echo "This might be a new level. Using empty baseline."
+            echo "<!-- New level baseline -->" > /tmp/previous_version.html
+          fi
+
+      - name: Generate new version with AI
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+        run: |
+          echo "================================"
+          echo "AI GENERATION STEP"
+          echo "================================"
+          echo ""
+          echo "TODO: Configure opencode or your preferred AI tool here."
+          echo ""
+          echo "The pipeline has prepared:"
+          echo "  - Previous version: /tmp/previous_version.html"
+          echo "  - Spec file: ${{ steps.find_spec.outputs.spec_file }}"
+          echo "  - AGENTS.md: $(pwd)/AGENTS.md"
+          echo ""
+          echo "Expected output:"
+          echo "  - Generated file: /tmp/generated_version.html"
+          echo ""
+          echo "Example opencode command (configure as needed):"
+          echo "  opencode run \\"
+          echo "    --dangerously-skip-permissions \\"
+          echo "    -m anthropic/claude-sonnet-4 \\"
+          echo "    -f /tmp/previous_version.html \\"
+          echo "    -f ${{ steps.find_spec.outputs.spec_file }} \\"
+          echo "    -f AGENTS.md \\"
+          echo "    --title 'Generate JUICE-MAN v${{ steps.find_spec.outputs.version }}' \\"
+          echo "    'Apply the spec to the previous version HTML. Follow all conventions in AGENTS.md. Output a complete, valid HTML file.'"
+          echo ""
+          echo "For now, copying previous version as placeholder..."
+          cp /tmp/previous_version.html /tmp/generated_version.html
+
+      - name: Save generated file to versioned path
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          
+          cp /tmp/generated_version.html "$OUTPUT_FILE"
+          echo "Generated file saved to: $OUTPUT_FILE"
+          ls -la "$OUTPUT_FILE"
+
+      - name: Commit generated file to PR branch
+        run: |
+          git config user.name "juice-man-bot"
+          git config user.email "bot@juice-man.dev"
+          
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          
+          git add "$OUTPUT_FILE"
+          
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
+            git push origin HEAD:${{ github.head_ref }}
+            echo "Committed and pushed generated file"
+          fi
+
+      - name: Update previews manifest
+        run: |
+          LEVEL="${{ steps.find_spec.outputs.level }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          PR_NUMBER="${{ github.event.number }}"
+          
+          MANIFEST_FILE="previews.json"
+          
+          # Read existing manifest or create empty array
+          if [ -f "$MANIFEST_FILE" ]; then
+            cat "$MANIFEST_FILE" > /tmp/previews_manifest.json
+          else
+            echo '[]' > /tmp/previews_manifest.json
+          fi
+          
+          # Use Node.js to update JSON (available in ubuntu-latest)
+          node -e "
+            const fs = require('fs');
+            const manifest = JSON.parse(fs.readFileSync('/tmp/previews_manifest.json', 'utf8'));
+            const prNumber = ${PR_NUMBER};
+            const existingIndex = manifest.findIndex(p => p.pr_number === prNumber);
+            
+            const entry = {
+              pr_number: prNumber,
+              level: ${LEVEL},
+              version: ${VERSION},
+              title: 'PR #' + prNumber + ' - Level ' + ${LEVEL} + ' v' + ${VERSION},
+              preview_url: 'https://htmlpreview.github.io/?https://github.com/${{ github.repository }}/blob/${{ github.head_ref }}/levels/level_${LEVEL}_v${VERSION}.html',
+              status: 'generated',
+              updated_at: new Date().toISOString()
+            };
+            
+            if (existingIndex >= 0) {
+              manifest[existingIndex] = entry;
+            } else {
+              manifest.push(entry);
+            }
+            
+            fs.writeFileSync('${MANIFEST_FILE}', JSON.stringify(manifest, null, 2));
+            console.log('Manifest updated');
+          "
+          
+          git config user.name "juice-man-bot"
+          git config user.email "bot@juice-man.dev"
+          git add "$MANIFEST_FILE"
+          
+          if git diff --cached --quiet; then
+            echo "No manifest changes"
+          else
+            git commit -m "Update previews manifest for PR #${PR_NUMBER}"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number;
+            const level = '${{ steps.find_spec.outputs.level }}';
+            const version = '${{ steps.find_spec.outputs.version }}';
+            const repo = context.repo.repo;
+            const owner = context.repo.owner;
+            const branch = context.payload.pull_request.head.ref;
+            
+            const generatedFile = `levels/level_${level}_v${version}.html`;
+            const previewUrl = `https://htmlpreview.github.io/?https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile}`;
+            const diffUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files`;
+            
+            const body = `## 🤖 JUICE-MAN Version Generated
+            
+            Level: **${level}** | Version: **v${version}**
+            
+            ### Files
+            - Generated: [\`${generatedFile}\`](https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile})
+            - Diff: [View changes](${diffUrl})
+            
+            ### Preview
+            - [Play generated version](${previewUrl}) (via HTMLPreview)
+            
+            ### Status
+            ${process.env.GENERATION_STATUS === 'success' ? '✅ Generation successful' : '⚠️ Generation completed with placeholder (opencode not yet configured)'}
+            
+            ---
+            *This comment will be updated on each push.*`;
+            
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber
+            });
+            
+            const botComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('JUICE-MAN Version Generated'));
+            
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: botComment.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body
+              });
+            }
+
+      - name: Set generation status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "GENERATION_STATUS=success" >> $GITHUB_ENV
+          else
+            echo "GENERATION_STATUS=failure" >> $GITHUB_ENV
+          fi
