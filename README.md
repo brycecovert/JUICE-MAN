@@ -1,18 +1,54 @@
 # JUICE-MAN
 
-The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One new version a week - sourced by the community. Can you make it juicier?
+Humanity is seeking AGI. Neat idea if you ask me. But a higher aspiration is to bring humanity together to accomplish its greatest purpose: Make the JUICIEST version of PAC-MAN that ever existed. A democratic, collaborative effort. AI can do a lot of things. It can make juice, but it can't feel it in its bones. So we must come together and utilize AI together to make the juiciest version of PAC-MAN: JUICE-MAN. Can you make it juicier? 
+
+PAC-MAN's final form is coded in the latest and greatest programming language: Markdown. If you can write english (or non-english) sentences to describe juice, you can participate.
 
 ![A potential JUICE-MAN from a parallel universe](juice-man-embed.gif)
 
 > This is not JUICE-MAN. It's inspiration from a parallel universe. Play the inspiration: [juice_man_inspiration.html](https://brycecovert.github.io/JUICE-MAN/juice_man_inspiration.html)
 
-## Current version: v0
+## Current Status
 
-## JUICE-MAN (official releases, every 7 days starting May 10th)
+Nightly builds start **May 10, 2026**. Open a PR with a spec to participate.
+
+## How It Works
+
+1. **Open a PR** with a spec file at `specs/level_n/v$(cat next_version).md` describing your desired changes (max 300 words).
+2. **Vote** by adding thumbs up to PRs. The PR with the most votes wins.
+3. **AI generates** the next version automatically via GitHub Action.
+4. **Play** the nightly builds starting May 10, 2026.
+
+## Level System
+
+JUICE-MAN is split into **levels**, each with 10 versions (v0–v9). Each level has its own `.html` file. Completing a level redirects to the next.
+
+JUICE-MAN is **NOT a walled garden**. It stands for freedom, liberty, and justice for all. Each level is provided by a different open-weight model — no corporate lock-in, no closed systems.
+
+| Level | Model | Theme | Status |
+|-------|-------|-------|--------|
+| 1 | Qwen-3.6-27B | Decided by first round of PRs | Accepting theme proposals |
+| 2+ | TBD | TBD | Not yet started |
+
+### Theme Voting
+
+When a new level opens, the first round of PRs propose themes. The winning theme sets the creative direction for that level's 10 versions. GO FLIPPIN CRAZY. 3D JUICE-MAN? Please. Surfing JUICE-MAN? Sign me up brother.
+
+## PR Rules
+
+1. **Max 300 words** — Spec files must not exceed 300 words.
+2. **Additive only** — Cannot undo anything from a previous PR unless that PR broke something.
+3. **Must be SFW** — No explicit, offensive, or inappropriate content.
+4. **Respect the theme** — Each level has a theme decided in the first round of PRs.
+5. **Spirit of the law** — The rules are easy to game. But that won't be fun.
+
+## Official Releases (per level)
+
+### Level 1
 
 | Version | Author | Play | Description |
 |---------|--------|------|-------------|
-| **v0** | brycecovert | [juice_man_v0.html](https://brycecovert.github.io/JUICE-MAN/juice_man_v0.html) | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
+| **v0** | brycecovert | — | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
 | **v1** | ? | — | Coming May 10, 2026 — elected from open PRs. |
 
 ## JUICE-MAN forks
@@ -20,30 +56,14 @@ The juiciest Pac-Man that ever existed. A democratic, collaborative effort. One 
 | Fork | Author | Play | Description |
 |------|--------|------|-------------|
 | Inspiration | brycecovert | [juice_man_inspiration.html](https://brycecovert.github.io/JUICE-MAN/juice_man_inspiration.html) | Parallel universe version — space theme, neon walls, particles, and aggressive FX. Not part of the official competition. |
-| *(yours?)* | — | — | Fork this repo, make it juicier, and open a PR! |
-
-### Current
-
-The `juice_man.html` file is the living, evolving version of the game — built from v0. It's not the final release — it's the canvas. Each week, the next version of JUICE-MAN is elected by poll, adding more juice on top of whatever came before. The inspiration file (`juice_man_inspiration.html`) is a parallel universe version and not part of the official competition.
-
-## How It Works
-
-Each week, a new "JUICE-MAN" PR is elected via poll of open PRs. The winning PR becomes the next JUICE-MAN official release, making the game more over-the-top than before.
-
-**Start date:** May 10, 2026
-**End date:** When no further submissions are made
-
-## PR Rules
-
-1. **Make it juicer** — Every PR must make JUICE-MAN more visually intense than before.
-2. **Single prompt** — Each PR comes from a single prompt (max 300 tokens) applied to the current `juice_man.html`.
-3. **Additive only** — Build on prior work. No rewrites, no removals.
-4. **Single file** — Everything lives in `juice_man.html`. No dependencies.
-5. **No mechanic changes** The game has to play as if the same inputs would result in the same output.
-6. **Spirit of the law** - I haven't thought of many edge cases for rules, and they're easy to game. But that won't be fun.
+| *(yours?)* | — | — | Fork this repo, write a spec, and open a PR! |
 
 ## Release Log
 
 | Version | Date | Juice-Man | Changes |
 |---------|------|-----------|---------|
 | v0 | May 1, 2026 | — | Clean Pac-Man baseline. No effects. Standard maze, ghosts, pellets, power-ups, fruit, scoring, lives, levels. |
+
+## Credits
+
+Authors who contribute to each level are automatically added to `credits/level_N_credits.md`.

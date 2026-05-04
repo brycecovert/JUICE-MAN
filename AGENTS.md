@@ -2,55 +2,64 @@
 
 ## Project
 
-Single-file Pac-Man variant (`juice_man.html`). Canvas-based, no dependencies. Forked from brycecovert/JUICE-MAN v0 (clean baseline with no visual effects). All juice must be additive on top of v0.
+JUICE-MAN is a collaborative, democratically-elected Pac-Man variant. Starting May 10, 2026, nightly builds are generated automatically from winning PR specs. The game is split into **levels**, each containing 10 versions. Each level lives in its own `.html` file. Completing a level redirects the player to the next level.
+
+## Structure
+
+- `levels/` — Contains per-level `.html` files (e.g., `level_1.html`, `level_2.html`, etc.)
+- `specs/` — Contains version spec files organized by level (e.g., `specs/level_1/v0.md`, `specs/level_1/v1.md`, etc.)
+- `credits/` — Auto-generated credits for each level
 
 ## Competitive Format
 
-JUICE-MAN is a democratic, collaborative competition to create the juiciest Pac-Man that ever existed. Each week, a new "JUICE-MAN" is elected via poll of open PRs.
+JUICE-MAN is a democratic competition to create the juiciest Pac-Man that ever existed. Each cycle, the PR with the most thumbs up that respects the rules wins and becomes the next version.
 
 **Start date:** May 10, 2026
 **End date:** When no further submissions are made
 
+### PR Format
+
+PRs must contain:
+
+1. **A spec file** at `specs/level_n/v$(cat next_version).md` — describes the expected changes (max 300 words)
+2. **No direct code changes** — the AI will generate the implementation from the spec
+
+The spec is the specification for what the next version should contain. It should describe expected visual/audio changes, new effects, or themes. Anything from prior versions is assumed to continue unless explicitly stated.
+
 ### PR Rules
 
-1. **Make it juicer** — Every PR must make JUICE-MAN more visually intense than before.
-2. **Single prompt** — Each PR comes from a single prompt (max 300 tokens) applied to the current `juice_man.html`.
-3. **Additive only** — Build on prior work. No rewrites, no removals.
-4. **Single file** — Everything lives in `juice_man.html`. No dependencies.
-5. **No mechanic changes** — The game has to play as if the same inputs would result in the same output.
-6. **Spirit of the law** — The rules are easy to game. But that won't be fun.
+1. **Max 300 words** — The spec file must not exceed 300 words.
+2. **Additive only** — Cannot undo anything from a previous PR unless that PR broke something.
+3. **Must be SFW** — No explicit, offensive, or inappropriate content.
+4. **Respect the theme** — Each level has a theme decided in the first round of PRs for that level.
+5. **Spirit of the law** — The rules are easy to game. But that won't be fun.
 
-## Core Rule: Additive Juice Only
+## Level System
 
-Every change must be **additive** to existing code. Never remove, simplify, or refactor away existing effects. The goal is to stack more juice on top of what's already there, making the game increasingly over-the-top.
+- Each level has **10 versions** (v0–v9).
+- Each level starts with **v0** as a base (clean Pac-Man baseline).
+- The **theme** for a level is decided in the first round of PRs for that level.
+- When a player completes a level, they are redirected to the next level.
+- All authors for a level are automatically added to `credits/level_N_credits.md`.
 
-Think of it as layering: each iteration adds a new visual, audio, or feedback layer without touching what came before.
+### Theme Voting
 
-## What Counts as "Juice"
+When a new level opens, the first round of PRs are theme proposals. The winning theme sets the creative direction for that level's 10 versions.
 
-Juice is any effect that makes the game feel more intense, reactive, or alive. Categories include:
+## AI Generation
 
-- **Screen effects**: shake, rumble, flash, vignette, scanlines, chromatic aberration, zoom pulses, screen warp, pixel sorting, color inversion bursts
-- **Particles**: bursts, trails, rings, fountains, explosions, sparks, embers, confetti, pixel debris, liquid splashes
-- **Lighting**: glow, bloom, lens flares, light rays, fireflies, neon pulses, dynamic spotlights
-- **Weather**: meteors, lightning, rain, snow, electric arcs, plasma storms, aurora, solar flares
-- **Physics**: shockwaves, ripple effects, bounce, squash-and-stretch, wobble, jelly deformation
-- **Typography**: floating text, score popups, combo announcements, screen-filling text slams, glitch text
-- **Audio feedback**: (if added) hit sounds, power-ups, explosions, ambient drones
-- **Timing**: slow-mo on big events, speed ramps, freeze frames, elastic transitions
+When a PR is opened, a GitHub Action triggers AI to:
 
-## Existing Juice Inventory (Do Not Remove)
+1. Read the spec at `specs/level_n/v$(next_version).md`
+2. Generate the next version of JUICE-MAN based on that spec, building on the prior version
+3. Submit the generated code as a commit to the PR or main branch
 
-v0 is a clean baseline with no visual effects. Any juice added on top must be tracked here and never removed by subsequent PRs.
+## Voting
 
-| Layer | Effects |
-|-------|---------|
-| — | *(none yet — v0 is the starting point)* |
-
+PRs are voted on by **thumbs up** on the PR itself. The PR with the most thumbs up that respects the rules wins. If there is no clear winner, AI will generate its own idea and pick one.
 
 ## Code Conventions
 
-- **Single file**: Everything lives in `juice_man.html`. No external files or dependencies.
 - **Naming**: Effect state arrays use plural nouns (`meteorParts`, `glitchBlocks`). Update functions prefixed `upd`, draw functions prefixed `draw`.
 - **Particle budget**: Respect `MAX_PARTICLES=1500` for the main `parts[]` array. New persistent effect arrays should have their own reasonable caps.
 - **Time**: Use `dt` (delta time in seconds) for all updates. Use `globalTime` for oscillating effects.
@@ -58,11 +67,6 @@ v0 is a clean baseline with no visual effects. Any juice added on top must be tr
 - **Colors**: Use hex for constants, `hsla()` for dynamic effects. Rainbow palette in `RAINBOW` array.
 - **No comments**: Do not add code comments. The code is dense by design.
 - **State machine**: Game states are `title`, `playing`, `paused`, `lifeLost`, `levelComplete`, `gameOver`. New effects should check `state` where relevant.
-- **Integration points**:
-  - New update logic goes in `update()` at line ~657
-  - New draw logic goes in `draw()` at line ~666, ordered back-to-front
-  - New init logic goes in `resize()` at line ~69 or a dedicated init called from `resize()`
-  - New state arrays declared near top with other arrays (line ~58-66)
 
 ## Anti-Goals
 
@@ -75,3 +79,7 @@ v0 is a clean baseline with no visual effects. Any juice added on top must be tr
 ## Quality Bar
 
 Every added effect should pass the "noticeable at a glance" test: a player watching the screen should immediately see something new happening. If an effect is only visible when you know to look for it, it's not juice — it's decoration.
+
+## Credits
+
+All authors who contribute to a level are automatically added to `credits/level_N_credits.md`. Format is managed by the `add_author` workflow.
