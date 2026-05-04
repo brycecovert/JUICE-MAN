@@ -120,8 +120,8 @@ body {
 
 .void-text {
   font-family: var(--font-display);
-  font-size: clamp(1.2rem, 3vw, 2rem);
-  color: #1a1a1a;
+  font-size: clamp(1.5rem, 4vw, 2.8rem);
+  color: #4a4a4a;
   letter-spacing: 0.4em;
   text-transform: uppercase;
   text-align: center;
@@ -129,8 +129,8 @@ body {
 }
 
 @keyframes void-breath {
-  0%, 100% { opacity: 0.015; }
-  50% { opacity: 0.035; }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .bounce-arrow {
@@ -182,8 +182,8 @@ body {
 
 .dark-ages-text {
   font-family: var(--font-display);
-  font-size: clamp(1rem, 2.5vw, 1.8rem);
-  color: #3a3a3a;
+  font-size: clamp(1.2rem, 3vw, 2.2rem);
+  color: #7a7a7a;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   text-align: center;
@@ -191,8 +191,8 @@ body {
 }
 
 @keyframes dark-pulse {
-  0%, 100% { opacity: 0.25; }
-  50% { opacity: 0.45; }
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
 }
 
 .era-dots {
@@ -950,6 +950,15 @@ CSS VARIATIONS FOR EACH VERSION:
           </div>
         </div>
 
+        <div class="carousel-slide">
+          <span class="carousel-slide-label">Inspiration #4</span>
+          <h3 class="carousel-slide-title">Juice Man</h3>
+          <p class="carousel-slide-desc">The original. Classic arcade glow with neon trails and particle bursts.</p>
+          <div class="carousel-game">
+            <iframe src="juice_man_inspiration.html" title="Juice Man"></iframe>
+          </div>
+        </div>
+
       </div>
       <button class="carousel-arrow next" onclick="moveCarousel(1)">&#8250;</button>
     </div>
@@ -1031,7 +1040,7 @@ document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
 // INSPIRATION CAROUSEL
 let currentSlide = 0;
-const totalSlides = 3; // Update when adding/removing inspiration games
+const totalSlides = 4; // Update when adding/removing inspiration games
 
 function initCarousel() {
   const navContainer = document.getElementById('carouselNav');
@@ -1061,7 +1070,6 @@ function goToSlide(index) {
   updateCarousel();
 }
 
-setInterval(() => moveCarousel(1), 6000);
 initCarousel();
 
 // SCROLL EFFECTS — subtle section intensity
