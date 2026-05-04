@@ -148,10 +148,10 @@ PROMPT
           
           # Check if opencode is available
           if command -v opencode &> /dev/null; then
-            echo "opencode found, running generation..."
+            echo "opencode found, running generation with openrouter/Qwen3.6-27B..."
             opencode run \
               --dangerously-skip-permissions \
-              -m anthropic/claude-sonnet-4 \
+              -m openrouter/Qwen3.6-27B \
               --title "Generate JUICE-MAN v${VERSION}" \
               < /tmp/generation_prompt.txt \
               > /tmp/generated_version.html
