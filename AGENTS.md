@@ -80,6 +80,21 @@ PRs are voted on by **thumbs up** on the PR itself. The PR with the most thumbs 
 
 Every added effect should pass the "noticeable at a glance" test: a player watching the screen should immediately see something new happening. If an effect is only visible when you know to look for it, it's not juice — it's decoration.
 
+## Browser Validation
+
+After generating code, the AI agent must validate the HTML file using agent-browser:
+
+1. Open the generated HTML file in agent-browser (`agent-browser --allow-file-access open file://...`)
+2. Wait 1 second for the page to fully load
+3. Press the Space key to start the game
+4. Wait 1 second for the game to react
+5. Take a screenshot of the running game
+6. Check for JavaScript errors using `agent-browser errors`
+7. If any JavaScript errors are found, fix them with minimal surgical edits
+8. Re-test until no errors remain
+
+The screenshot and error report are automatically attached to the PR. Any JavaScript errors must be resolved before the PR is considered complete.
+
 ## Credits
 
 All authors who contribute to a level are automatically added to `credits/level_N_credits.md`. Format is managed by the `add_author` workflow.
