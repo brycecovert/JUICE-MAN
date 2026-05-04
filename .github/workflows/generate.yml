@@ -102,32 +102,65 @@ jobs:
         env:
           LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
         run: |
+          SPEC_FILE="${{ steps.find_spec.outputs.spec_file }}"
+          VERSION="${{ steps.find_spec.outputs.version }}"
+          
           echo "================================"
           echo "AI GENERATION STEP"
           echo "================================"
           echo ""
-          echo "TODO: Configure opencode or your preferred AI tool here."
+          echo "Generating prompt file with @file references..."
+          
+          # Create prompt file using @file references
+          cat > /tmp/generation_prompt.txt << PROMPT
+You are an expert game developer specializing in arcade games and visual effects ("juice").
+
+Your task: Apply the spec below to the previous version HTML file and output a COMPLETE, VALID, SELF-CONTAINED HTML file.
+
+CRITICAL RULES:
+1. Output ONLY a complete HTML file starting with <!DOCTYPE html> and ending with </html>
+2. Preserve all existing game mechanics, state machine, collision detection, scoring
+3. Only ADD visual/audio effects as specified — do not remove existing functionality
+4. Follow all AGENTS.md conventions strictly (naming, particle budgets, time handling, etc.)
+5. Do not add code comments
+6. The code must be dense and production-ready
+
+Here are the reference files:
+
+@AGENTS.md
+
+@${SPEC_FILE}
+
+@/tmp/previous_version.html
+
+Instructions:
+- Read AGENTS.md for coding conventions (MUST follow all rules)
+- Read the spec to understand what juice effects to add
+- Read the previous version HTML to understand current implementation
+- Apply the spec changes while following conventions
+- Output a complete HTML file that replaces the previous version
+- Ensure the game still works: movement, pellet eating, ghost AI, scoring, state transitions
+PROMPT
+          
+          echo "Prompt file created at /tmp/generation_prompt.txt"
+          echo "Prompt size: $(wc -c < /tmp/generation_prompt.txt) bytes"
           echo ""
-          echo "The pipeline has prepared:"
-          echo "  - Previous version: /tmp/previous_version.html"
-          echo "  - Spec file: ${{ steps.find_spec.outputs.spec_file }}"
-          echo "  - AGENTS.md: $(pwd)/AGENTS.md"
-          echo ""
-          echo "Expected output:"
-          echo "  - Generated file: /tmp/generated_version.html"
-          echo ""
-          echo "Example opencode command (configure as needed):"
-          echo "  opencode run \\"
-          echo "    --dangerously-skip-permissions \\"
-          echo "    -m anthropic/claude-sonnet-4 \\"
-          echo "    -f /tmp/previous_version.html \\"
-          echo "    -f ${{ steps.find_spec.outputs.spec_file }} \\"
-          echo "    -f AGENTS.md \\"
-          echo "    --title 'Generate JUICE-MAN v${{ steps.find_spec.outputs.version }}' \\"
-          echo "    'Apply the spec to the previous version HTML. Follow all conventions in AGENTS.md. Output a complete, valid HTML file.'"
-          echo ""
-          echo "For now, copying previous version as placeholder..."
-          cp /tmp/previous_version.html /tmp/generated_version.html
+          
+          # Check if opencode is available
+          if command -v opencode &> /dev/null; then
+            echo "opencode found, running generation..."
+            opencode run \
+              --dangerously-skip-permissions \
+              -m anthropic/claude-sonnet-4 \
+              --title "Generate JUICE-MAN v${VERSION}" \
+              < /tmp/generation_prompt.txt \
+              > /tmp/generated_version.html
+            echo "Generation complete"
+          else
+            echo "WARNING: opencode not found. Install it to enable AI generation."
+            echo "For now, copying previous version as placeholder..."
+            cp /tmp/previous_version.html /tmp/generated_version.html
+          fi
 
       - name: Save generated file to versioned path
         run: |
