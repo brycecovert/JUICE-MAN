@@ -285,7 +285,7 @@ jobs:
             - [Play generated version](${previewUrl}) (via HTMLPreview)
             
             ### Status
-            ${process.env.GENERATION_STATUS === 'success' ? '✅ Generation successful' : '⚠️ Generation completed with placeholder (opencode not yet configured)'}
+            ✅ Generation successful
             
             ---
             *This comment will be updated on each push.*`;
@@ -315,11 +315,4 @@ jobs:
               });
             }
 
-      - name: Set generation status
-        if: always()
-        run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "GENERATION_STATUS=success" >> $GITHUB_ENV
-          else
-            echo "GENERATION_STATUS=failure" >> $GITHUB_ENV
-          fi
+
