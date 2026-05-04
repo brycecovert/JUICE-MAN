@@ -1,6 +1,6 @@
 # JUICE-MAN
 
-Humanity is seeking AGI. Neat idea if you ask me. But a higher aspiration is to bring humanity together to accomplish its greatest purpose: Make the JUICIEST version of PAC-MAN that ever existed. A democratic, collaborative effort. AI can do a lot of things. It can make juice, but it can't feel it in its bones. So we must come together and utilize AI together to make the juiciest version of PAC-MAN: JUICE-MAN. Can you make it juicier? 
+Humanity is seeking AGI. Neat idea if you ask me. But a higher aspiration is to bring humanity together to accomplish its greatest purpose: Make the JUICIEST version of PAC-MAN that ever existed. A democratic, collaborative effort. AI can do a lot of things. It can make juice, but it can't feel it in its bones. Because AI bones are too squishy, made out of a mix of perceptrons and JELL-O. So we must come together as humankind and utilize AI together to make the juiciest version of PAC-MAN: JUICE-MAN. Can you make it juicier? 
 
 PAC-MAN's final form is coded in the latest and greatest programming language: Markdown. If you can write english (or non-english) sentences to describe juice, you can participate.
 
