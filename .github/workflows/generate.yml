@@ -106,6 +106,17 @@ jobs:
           opencode --version
           echo "opencode installed successfully"
 
+      - name: Configure OpenRouter provider
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          echo "Configuring OpenRouter provider..."
+          # Log in to OpenRouter provider with API key
+          echo "${OPENROUTER_API_KEY}" | opencode providers login https://openrouter.ai
+          echo "Provider configured"
+          # Verify provider is set up
+          opencode providers list
+
       - name: Generate new version with AI
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -155,10 +166,10 @@ jobs:
           echo ""
           
           # Run opencode with OpenRouter
-          echo "Running opencode with openrouter/qwen/qwen3.6-27b..."
+          echo "Running opencode with openrouter/qwen3.6-27b..."
           opencode run \
             --dangerously-skip-permissions \
-            -m qwen/qwen3.6-27b \
+            -m openrouter/qwen3.6-27b \
             --title "Generate JUICE-MAN v${VERSION}" \
             < /tmp/generation_prompt.txt \
             > /tmp/generated_version.html
