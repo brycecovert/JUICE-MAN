@@ -32,7 +32,7 @@ const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
 const HUD_H=52;
-const RAINBOW=['#ff0000','#ff8000','#ffff00','#80ff00','#00ff00','#00ff80','#00ffff','#0080ff','#0000ff','#8000ff','#ff00ff','#ff0080'];
+const RAINBOW=['#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#0000ff','#9900ff'];
 
 /* state */
 let state='title';
@@ -45,8 +45,7 @@ let fruit=null,fruitTime=0,fruitSpawned=false;
 let lastT=0,dt=0;
 let ts=0,ox=0,oy=0;
 let globalTime=0;
-let ghostTrails=[];
-const MAX_TRAILS=200;
+let rainbowParts=[],MAX_RAINBOW_PARTS=300;
 
 /* resize */
 function resize(){
@@ -82,9 +81,8 @@ function wrap(c){
   return c;
 }
 function dist(ax,ay,bx,by){return Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by));}
-function rainbowHue(t){return RAINBOW[Math.floor((t*0.001)%RAINBOW.length)];}
-function rainbowHueF(t){return (t*0.001)%1;}
-function hsla(h,s,l,a){return `hsla(${h*360|0},${s*100|0}%,${l*100|0}%,${a})`;}
+function rainbowColor(t,offset=0){return RAINBOW[Math.floor((t+offset)%RAINBOW.length)];}
+function rainbowHue(t,offset=0){return (t+offset)%1;}
 
 /* maze init */
 function initMaze(){
@@ -150,6 +148,10 @@ function collect(gx,gy){
     combo++;comboTime=COMBO_WINDOW;
     const bonus=Math.min(combo,10)*5;score+=bonus;
     if(pelletCount<=0) state='levelComplete';
+    
+    const quadrant=(gx<COLS/2?0:1)+(gy<ROWS/2?0:2);
+    rainbowParts.push({x:cx,y:cy,col:quadrant,hue:globalTime*0.002,life:0.5,maxLife:0.5});
+    if(rainbowParts.length>MAX_RAINBOW_PARTS) rainbowParts.shift();
   }
   if(cell===T_POWER){
     maze[gy][gx]=T_PATH;pelletCount--;score+=50;
@@ -171,7 +173,8 @@ function createGhost(i){
     hY:9.5+((i%2===0)?0:0.6),
     hX:9.5+i*0.5,
     scared:false,eaten:false,idx:i,
-    col:GHOST_COLORS[i]};
+    col:GHOST_COLORS[i],
+    trail:[]};
 }
 function ghostTarget(g){
   if(g.eaten) return{x:10,y:11};
@@ -243,16 +246,11 @@ function updGhost(g,d){
       g.y=g.gy+(g.fy-g.gy)*t;
     }
   }
-  if(state==='playing'){
-    ghostTrails.push({x:g.x,y:g.y,col:g.col,age:0});
-    if(ghostTrails.length>MAX_TRAILS) ghostTrails.shift();
+  
+  if(state==='playing'&&g.trail.length<10){
+    g.trail.push({x:g.x,y:g.y,hue:globalTime*0.001});
   }
-}
-function updTrails(d){
-  for(let i=ghostTrails.length-1;i>=0;i--){
-    ghostTrails[i].age+=d;
-    if(ghostTrails[i].age>0.3) ghostTrails.splice(i,1);
-  }
+  while(g.trail.length>10) g.trail.shift();
 }
 
 /* power */
@@ -298,7 +296,6 @@ function resetPos(){
   for(let i=0;i<4;i++) ghosts[i]=createGhost(i);
   fruit=null;fruitSpawned=false;fruitTime=0;
   powerOn=false;ghostChain=0;combo=0;comboTime=0;
-  ghostTrails=[];
 }
 
 /* fruit */
@@ -381,7 +378,6 @@ function startGame(){
   initMaze();pm=createPM();ghosts=[];
   for(let i=0;i<4;i++) ghosts[i]=createGhost(i);
   fruit=null;fruitSpawned=false;fruitTime=0;state='playing';
-  ghostTrails=[];
 }
 function nextLevel(){
   window.location.href='level_2.html';
@@ -389,12 +385,18 @@ function nextLevel(){
 
 /* drawing */
 function drawMaze(){
+  const wallHue=globalTime*0.0005;
+  const screenHue=globalTime*0.0002;
+  ctx.fillStyle=`hsla(${screenHue*360},80%,5%,0.1)`;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       const cell=maze[r][c],x=tx(c),y=ty(r),cx2=x+ts/2,cy2=y+ts/2,s=ts;
       if(cell===T_WALL){
-        const hue=rainbowHueF(globalTime);
-        ctx.fillStyle=hsla(hue,0.8,0.3,1);
+        const hueOffset=(r*COLS+c)*0.02;
+        const wallCol=`hsla(${(wallHue+hueOffset)*360},100%,50%,1)`;
+        ctx.fillStyle=wallCol;
         ctx.fillRect(x,y,s,s);
         ctx.fillStyle='#000';
         ctx.fillRect(x+2,y+2,s-4,s-4);
@@ -404,15 +406,16 @@ function drawMaze(){
         ctx.fillRect(x,y+s*0.4,s,s*0.2);
       }
       if(cell===T_PELLET){
-        const q=(c<COLS/2?0:1)+(r<ROWS/2?0:2);
-        const hue=rainbowHueF(globalTime+q*0.25);
-        ctx.fillStyle=hsla(hue,0.9,0.7,1);
+        const quadrant=(c<COLS/2?0:1)+(r<ROWS/2?0:2);
+        const hueOffset=quadrant*0.25;
+        const pelletCol=`hsla(${(globalTime*0.002+hueOffset)*360},100%,70%,1)`;
+        ctx.fillStyle=pelletCol;
         ctx.beginPath();ctx.arc(cx2,cy2,s*0.07,0,Math.PI*2);ctx.fill();
       }
       if(cell===T_POWER){
-        const hue=rainbowHueF(globalTime*2);
-        const p=0.7+0.3*Math.sin(globalTime*0.005);
-        ctx.fillStyle=hsla(hue,0.9,0.7,p);
+        const p=0.7+0.3*Math.sin(Date.now()*0.005);
+        const powerHue=globalTime*0.003;
+        ctx.fillStyle=`hsla(${powerHue*360},100%,70%,${p})`;
         ctx.beginPath();ctx.arc(cx2,cy2,s*0.15,0,Math.PI*2);ctx.fill();
       }
       if(cell===T_FRUIT&&fruit){
@@ -443,20 +446,35 @@ function drawGhost(g){
   else{cx=tx(g.x)+ts/2;cy=ty(g.y)+ts/2;}
   const s=ts,r=s*0.42;
   if(g.eaten){drawGEyes(cx,cy,g);return;}
+  
   let col=g.col;
-  if(g.scared){col=(powerTime<POWER_WARN&&Math.sin(globalTime*0.01)>0)?'#fff':'#2222ff';}
+  if(g.scared){col=(powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0)?'#fff':'#2222ff';}
   ctx.fillStyle=col;
   ctx.beginPath();
   ctx.arc(cx,cy-r*0.1,r,Math.PI,0,false);
   ctx.lineTo(cx+r,cy+r*0.55);
-  const w=Math.sin(globalTime*0.008)*r*0.12;
+  const w=Math.sin(Date.now()*0.008)*r*0.12;
   for(let i=3;i>=0;i--){
     const bx=cx+r-(i*r*0.5),by=cy+r*0.55+((i%2===0)?w:-w);
     ctx.lineTo(bx-r*0.2,by);ctx.lineTo(bx-r*0.4,by+r*0.05);
   }
   ctx.closePath();ctx.fill();
+  
+  if(g.trail.length>0){
+    ctx.globalAlpha=0.6;
+    for(let i=0;i<g.trail.length;i++){
+      const t=g.trail[i];
+      const alpha=0.6*(i/g.trail.length);
+      const trailX=tx(t.x)+ts/2,trailY=ty(t.y)+ts/2;
+      const trailHue=(t.hue+(g.idx*0.25))%1;
+      ctx.fillStyle=`hsla(${trailHue*360},100%,60%,${alpha})`;
+      ctx.beginPath();ctx.arc(trailX,trailY,r*0.3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  
   if(g.scared){
-    const fl=powerTime<POWER_WARN&&Math.sin(globalTime*0.01)>0;
+    const fl=powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0;
     ctx.fillStyle=fl?'#f00':'#fff';
     ctx.beginPath();
     ctx.arc(cx-r*0.28,cy-r*0.18,r*0.11,0,Math.PI*2);
@@ -477,13 +495,15 @@ function drawGEyes(cx,cy,g){
     ctx.arc(ex+dx*1.5,ey+dy*1.5,r*0.09,0,Math.PI*2);ctx.fill();
   }
 }
-function drawTrails(){
-  for(const t of ghostTrails){
-    const alpha=1-t.age/0.3;
-    const x=tx(t.x)+ts/2,y=ty(t.y)+ts/2;
-    const hue=rainbowHueF(globalTime);
-    ctx.fillStyle=hsla(hue,0.8,0.6,alpha*0.4);
-    ctx.beginPath();ctx.arc(x,y,ts*0.2,0,Math.PI*2);ctx.fill();
+function drawRainbowParts(){
+  for(let i=0;i<rainbowParts.length;i++){
+    const p=rainbowParts[i];
+    p.life-=dt;
+    if(p.life<=0){rainbowParts.splice(i,1);i--;continue;}
+    const alpha=p.life/p.maxLife;
+    const hue=(p.hue+p.col*0.25)%1;
+    ctx.fillStyle=`hsla(${hue*360},100%,70%,${alpha})`;
+    ctx.beginPath();ctx.arc(p.x,p.y,ts*0.07*(1-alpha),0,Math.PI*2);ctx.fill();
   }
 }
 
@@ -503,16 +523,19 @@ function drawHUD(){
   ctx.fillText(`HI ${highScore}`,10,37);
 
   ctx.textAlign='center';ctx.font='bold 14px monospace';
-  if(combo>1){
-    const comboHue=rainbowHueF(globalTime);
-    const grad=ctx.createLinearGradient(w*0.35-30,0,w*0.35+30,0);
-    grad.addColorStop(0,hsla(comboHue,1,0.7,1));
-    grad.addColorStop(1,hsla((comboHue+0.3)%1,1,0.7,1));
-    ctx.fillStyle=grad;
-    ctx.fillText(`x${combo}`,w*0.35,37);
-  }
   ctx.fillStyle='#fff';
   ctx.fillText(`LVL ${level}`,w*0.35,18);
+  if(combo>1){
+    const comboHue=globalTime*0.002;
+    const gradient=ctx.createLinearGradient(w*0.35-20,37,w*0.35+20,37);
+    for(let i=0;i<RAINBOW.length;i++){
+      const stop=i/(RAINBOW.length-1);
+      gradient.addColorStop(stop,RAINBOW[i]);
+    }
+    ctx.fillStyle=gradient;
+    ctx.font='bold 12px monospace';
+    ctx.fillText(`x${combo}`,w*0.35,37);
+  }
 
   ctx.textAlign='right';
   for(let i=0;i<lives;i++){
@@ -525,8 +548,8 @@ function drawHUD(){
   if(powerOn){
     const pct=Math.max(0,powerTime/POWER_DURATION),bw=90,bh=6,bx=w/2-bw/2,by=34;
     ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);
-    const hue=rainbowHueF(globalTime*2);
-    ctx.fillStyle=hsla(hue,0.8,0.6,powerTime<POWER_WARN?0.8:0.6);
+    const powerHue=globalTime*0.003;
+    ctx.fillStyle=powerTime<POWER_WARN?'#ff4444':`hsl(${powerHue*360},100%,50%)`;
     ctx.fillRect(bx,by,bw*pct,bh);
   }
 }
@@ -535,18 +558,20 @@ function drawHUD(){
 function drawTitle(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
   const cx=canvas.width/2,cy=canvas.height/2;
-  const titleHue=rainbowHueF(globalTime);
-  const grad=ctx.createLinearGradient(cx-100,0,cx+100,0);
-  grad.addColorStop(0,hsla(titleHue,1,0.7,1));
-  grad.addColorStop(1,hsla((titleHue+0.3)%1,1,0.7,1));
-  ctx.fillStyle=grad;
+  const titleHue=globalTime*0.001;
+  const gradient=ctx.createLinearGradient(cx-100,cy-100,cx+100,cy-100);
+  for(let i=0;i<RAINBOW.length;i++){
+    const stop=i/(RAINBOW.length-1);
+    gradient.addColorStop(stop,RAINBOW[i]);
+  }
+  ctx.fillStyle=gradient;
   ctx.font=`bold ${Math.min(64,canvas.width*0.085)}px monospace`;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('JUICE-MAN',cx,cy-100);
 
   /* pacman */
   const pacX=cx-30,pacY=cy-40;
-  const pacAngle=Math.sin(globalTime*0.003)*0.3;
+  const pacAngle=Math.sin(Date.now()*0.003)*0.3;
   ctx.fillStyle='#ffff00';
   ctx.beginPath();
   ctx.arc(pacX,pacY,14,0.3+pacAngle,Math.PI*2-0.3-pacAngle);
@@ -567,7 +592,7 @@ function drawTitle(){
   ctx.fillStyle='#112';
   ctx.beginPath();ctx.arc(ghX-3,ghY-3,1.5,0,Math.PI*2);ctx.arc(ghX+5,ghY-3,1.5,0,Math.PI*2);ctx.fill();
 
-  const p=0.5+0.5*Math.sin(globalTime*0.003);
+  const p=0.5+0.5*Math.sin(Date.now()*0.003);
   ctx.globalAlpha=0.5+p*0.5;
   ctx.fillStyle='#fff';
   ctx.font=`bold ${Math.min(22,canvas.width*0.032)}px monospace`;
@@ -589,11 +614,7 @@ function drawGameOver(){
   ctx.font=`bold ${Math.min(56,canvas.width*0.075)}px monospace`;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText('GAME OVER',cx,cy-80);
-  const scoreHue=rainbowHueF(globalTime);
-  const grad=ctx.createLinearGradient(cx-80,0,cx+80,0);
-  grad.addColorStop(0,hsla(scoreHue,1,0.7,1));
-  grad.addColorStop(1,hsla((scoreHue+0.3)%1,1,0.7,1));
-  ctx.fillStyle=grad;
+  ctx.fillStyle='#ffff00';
   ctx.font=`bold ${Math.min(28,canvas.width*0.04)}px monospace`;
   ctx.fillText(`FINAL SCORE: ${score}`,cx,cy-20);
   if(score>=highScore&&score>0){
@@ -603,7 +624,7 @@ function drawGameOver(){
   }
   ctx.fillStyle='#aaa';ctx.font=`${Math.min(16,canvas.width*0.024)}px monospace`;
   ctx.fillText(`LEVEL REACHED: ${level}`,cx,cy+55);
-  const p=0.5+0.5*Math.sin(globalTime*0.003);
+  const p=0.5+0.5*Math.sin(Date.now()*0.003);
   ctx.globalAlpha=0.5+p*0.5;ctx.fillStyle='#fff';
   ctx.fillText('PRESS SPACE OR TAP TO RESTART',cx,cy+100);
   ctx.globalAlpha=1;
@@ -628,19 +649,14 @@ function drawLifeLost(){
 }
 function drawLvlComplete(){
   ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,canvas.width,canvas.height);
-  const completeHue=rainbowHueF(globalTime);
-  ctx.fillStyle=hsla(completeHue,1,0.6,1);
+  ctx.fillStyle='#0f0';
   ctx.font=`bold ${Math.min(40,canvas.width*0.055)}px monospace`;
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(`LEVEL ${level} COMPLETE!`,canvas.width/2,canvas.height/2-35);
-  const scoreHue=rainbowHueF(globalTime+0.5);
-  const grad=ctx.createLinearGradient(canvas.width/2-60,0,canvas.width/2+60,0);
-  grad.addColorStop(0,hsla(scoreHue,1,0.7,1));
-  grad.addColorStop(1,hsla((scoreHue+0.3)%1,1,0.7,1));
-  ctx.fillStyle=grad;
+  ctx.fillStyle='#ffff00';
   ctx.font=`bold ${Math.min(24,canvas.width*0.035)}px monospace`;
   ctx.fillText(`SCORE: ${score}`,canvas.width/2,canvas.height/2+20);
-  const p=0.5+0.5*Math.sin(globalTime*0.003);
+  const p=0.5+0.5*Math.sin(Date.now()*0.003);
   ctx.globalAlpha=0.5+p*0.5;ctx.fillStyle='#fff';
   ctx.font=`${Math.min(16,canvas.width*0.024)}px monospace`;
   ctx.fillText('LOADING NEXT LEVEL...',canvas.width/2,canvas.height/2+70);
@@ -655,7 +671,7 @@ function drawLvlComplete(){
 function drawMobile(){
   if(!('ontouchstart' in window)) return;
   const bx=canvas.width/2,by=canvas.height-90;
-  const p=0.5+0.5*Math.sin(globalTime*0.002);
+  const p=0.5+0.5*Math.sin(Date.now()*0.002);
   const btns=[
     {k:'up',cx:bx,cy:by-80+28,dir:{x:0,y:-1}},
     {k:'down',cx:bx,cy:by+24+28,dir:{x:0,y:1}},
@@ -680,22 +696,15 @@ function drawMobile(){
   ctx.globalAlpha=1;
 }
 
-/* screen tint */
-function drawScreenTint(){
-  const hue=rainbowHueF(globalTime*0.3);
-  ctx.fillStyle=hsla(hue,0.15,0.5,0.05);
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-}
-
 /* main update */
 function update(d){
   globalTime+=d*1000;
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
-    updTrails(d);
     updPower(d);updFruit(d);updCombo(d);collisions();
   }
+  drawRainbowParts();
 }
 
 /* main draw */
@@ -703,10 +712,8 @@ function draw(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
   drawMaze();
-  drawTrails();
   drawPM();
   for(const g of ghosts) drawGhost(g);
-  if(state==='playing') drawScreenTint();
   drawHUD();drawMobile();
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
