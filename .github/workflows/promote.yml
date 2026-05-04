@@ -1,0 +1,110 @@
+name: Promote JUICE-MAN Version
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect merged version
+        id: detect
+        run: |
+          # Check if this push merged a versioned file
+          # Look for levels/level_N_vN.html in the latest commit
+          MERGED_FILE=$(git diff --name-only HEAD~1 HEAD | grep -E '^levels/level_[0-9]+_v[0-9]+\.html$' | head -n 1)
+          
+          if [ -z "$MERGED_FILE" ]; then
+            echo "No versioned file detected in this push. Skipping promotion."
+            echo "has_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Detected merged file: $MERGED_FILE"
+          
+          LEVEL=$(echo "$MERGED_FILE" | sed -E 's|levels/level_([0-9]+)_v[0-9]+\.html|\1|')
+          VERSION=$(echo "$MERGED_FILE" | sed -E 's|levels/level_[0-9]+_v([0-9]+)\.html|\1|')
+          CANONICAL_FILE="levels/level_${LEVEL}.html"
+          NEXT_VERSION_FILE="specs/level_${LEVEL}/next_version"
+          CREDITS_FILE="credits/level_${LEVEL}_credits.md"
+          
+          echo "level=$LEVEL" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "merged_file=$MERGED_FILE" >> $GITHUB_OUTPUT
+          echo "canonical_file=$CANONICAL_FILE" >> $GITHUB_OUTPUT
+          echo "next_version_file=$NEXT_VERSION_FILE" >> $GITHUB_OUTPUT
+          echo "credits_file=$CREDITS_FILE" >> $GITHUB_OUTPUT
+          echo "has_version=true" >> $GITHUB_OUTPUT
+
+      - name: Promote to canonical path
+        if: steps.detect.outputs.has_version == 'true'
+        run: |
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
+          MERGED_FILE="${{ steps.detect.outputs.merged_file }}"
+          CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
+          
+          cp "$MERGED_FILE" "$CANONICAL_FILE"
+          echo "Promoted $MERGED_FILE -> $CANONICAL_FILE"
+
+      - name: Increment next_version
+        if: steps.detect.outputs.has_version == 'true'
+        run: |
+          NEXT_VERSION_FILE="${{ steps.detect.outputs.next_version_file }}"
+          CURRENT=$(cat "$NEXT_VERSION_FILE" | tr -d '[:space:]')
+          NEXT=$((CURRENT + 1))
+          echo "$NEXT" > "$NEXT_VERSION_FILE"
+          echo "Updated next_version: $CURRENT -> $NEXT"
+
+      - name: Update credits
+        if: steps.detect.outputs.has_version == 'true'
+        run: |
+          CREDITS_FILE="${{ steps.detect.outputs.credits_file }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
+          
+          # Get the PR author from the merge commit
+          # The merge commit message typically contains the PR number
+          # We'll use the commit author as a fallback
+          AUTHOR=$(git log -1 --format='%an' HEAD)
+          
+          # Try to get PR author from the merge commit if available
+          PR_NUMBER=$(git log -1 --format='%B' HEAD | grep -oE '#[0-9]+' | head -n 1 | tr -d '#')
+          if [ -n "$PR_NUMBER" ]; then
+            echo "Detected PR #${PR_NUMBER}"
+          fi
+          
+          # Append to credits file
+          echo "- ${AUTHOR} — v${VERSION}" >> "$CREDITS_FILE"
+          echo "Updated credits: Added ${AUTHOR} for v${VERSION}"
+
+      - name: Commit promotion changes
+        if: steps.detect.outputs.has_version == 'true'
+        run: |
+          git config user.name "juice-man-bot"
+          git config user.email "bot@juice-man.dev"
+          
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
+          CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
+          NEXT_VERSION_FILE="${{ steps.detect.outputs.next_version_file }}"
+          CREDITS_FILE="${{ steps.detect.outputs.credits_file }}"
+          
+          git add "$CANONICAL_FILE" "$NEXT_VERSION_FILE" "$CREDITS_FILE"
+          
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Promote level ${LEVEL} v${VERSION} to canonical path"
+            git push origin main
+            echo "Committed and pushed promotion changes"
+          fi
