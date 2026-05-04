@@ -14,21 +14,37 @@ jobs:
   validate-and-generate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout PR branch
+      - name: Checkout PR
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref }}
+
+      - name: Ensure origin/main is available
+        run: |
+          git fetch origin main --depth=1
+          echo "origin/main is at: $(git rev-parse origin/main)"
 
       - name: Find spec file in PR
         id: find_spec
         run: |
-          git fetch origin main --depth=1
-          SPEC_FILE=$(git diff --name-only origin/main...HEAD | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+          # Try diff against origin/main first
+          SPEC_FILE=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+          
+          # Fallback: search working tree for spec files
           if [ -z "$SPEC_FILE" ]; then
-            echo "No spec file found in PR. Expected path: specs/level_N/vN.md"
+            SPEC_FILE=$(find specs -maxdepth 2 -name 'v*.md' 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+          fi
+          
+          if [ -z "$SPEC_FILE" ]; then
+            echo "ERROR: No spec file found. Expected path: specs/level_N/vN.md"
             exit 1
           fi
+          
+          if [ ! -f "$SPEC_FILE" ]; then
+            echo "ERROR: Spec file not found in working tree: $SPEC_FILE"
+            exit 1
+          fi
+          
           echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
           LEVEL=$(echo "$SPEC_FILE" | sed -E 's|specs/level_([0-9]+)/v[0-9]+\.md|\1|')
           VERSION=$(echo "$SPEC_FILE" | sed -E 's|specs/level_[0-9]+/v([0-9]+)\.md|\1|')
