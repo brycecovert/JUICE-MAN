@@ -98,9 +98,18 @@ jobs:
             echo "<!-- New level baseline -->" > /tmp/previous_version.html
           fi
 
+      - name: Install opencode
+        run: |
+          echo "Installing opencode..."
+          curl -L -o /tmp/opencode.tar.gz "https://github.com/opencode-ai/opencode/releases/latest/download/opencode-linux-x86_64.tar.gz"
+          tar -xzf /tmp/opencode.tar.gz -C /tmp
+          sudo mv /tmp/opencode/bin/opencode /usr/local/bin/opencode || mv /tmp/opencode/bin/opencode /usr/local/bin/opencode
+          opencode --version
+          echo "opencode installed successfully"
+
       - name: Generate new version with AI
         env:
-          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           SPEC_FILE="${{ steps.find_spec.outputs.spec_file }}"
           VERSION="${{ steps.find_spec.outputs.version }}"
@@ -146,21 +155,15 @@ jobs:
           echo "Prompt size: $(wc -c < /tmp/generation_prompt.txt) bytes"
           echo ""
           
-          # Check if opencode is available
-          if command -v opencode &> /dev/null; then
-            echo "opencode found, running generation with openrouter/Qwen3.6-27B..."
-            opencode run \
-              --dangerously-skip-permissions \
-              -m openrouter/Qwen3.6-27B \
-              --title "Generate JUICE-MAN v${VERSION}" \
-              < /tmp/generation_prompt.txt \
-              > /tmp/generated_version.html
-            echo "Generation complete"
-          else
-            echo "WARNING: opencode not found. Install it to enable AI generation."
-            echo "For now, copying previous version as placeholder..."
-            cp /tmp/previous_version.html /tmp/generated_version.html
-          fi
+          # Run opencode with OpenRouter
+          echo "Running opencode with openrouter/qwen/qwen3.6-27b..."
+          opencode run \
+            --dangerously-skip-permissions \
+            -m openrouter/qwen/qwen3.6-27b \
+            --title "Generate JUICE-MAN v${VERSION}" \
+            < /tmp/generation_prompt.txt \
+            > /tmp/generated_version.html
+          echo "Generation complete"
 
       - name: Save generated file to versioned path
         run: |
