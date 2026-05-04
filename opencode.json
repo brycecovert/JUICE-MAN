@@ -3,7 +3,7 @@
 	"provider": {
 		"openrouter": {
 			"models": {
-				"stepfun/step-3.5-flash": {}
+				"qwen/qwen3.6-plus": {}
 			}
 		}
 	}
