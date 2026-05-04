@@ -174,10 +174,10 @@ jobs:
           echo ""
           
           # Run opencode with OpenRouter
-          echo "Running opencode with openrouter/qwen/qwen3.6-27b..."
+          echo "Running opencode with openrouter/qwen/qwen3.6-plus..."
           opencode run \
             --dangerously-skip-permissions \
-            -m openrouter/qwen/qwen3.6-27b \
+            -m openrouter/qwen/qwen3.6-plus \
             --title "Generate JUICE-MAN v${VERSION}" \
             < /tmp/generation_prompt.txt \
             > /tmp/generated_version.html
