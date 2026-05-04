@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>JUICE-MAN — A History of Juiciness</title>
+
+<!--
+  ╔═══════════════════════════════════════════════════════════════════════════╗
+  ║  JUICE-MAN HOMEPAGE — index.html                                          ║
+  ║  A visual history of JUICE-MAN versions as an endless scroll experience  ║
+  ╠═══════════════════════════════════════════════════════════════════════════╣
+  ║  DESIGN PHILOSOPHY:                                                       ║
+  ║  - Scroll-driven narrative: "In the beginning" → PAC-MAN → v0 → v1+...   ║
+  ║  - Each version section gets progressively more wild/juicy as you scroll  ║
+  ║  - Uses intersection observer for scroll-triggered animations            ║
+  ║  - No external dependencies — pure HTML/CSS/JS                            ║
+  ║                                                                          ║
+  ║  VERSION CONTENT STRATEGY:                                                ║
+  ║  - v0: Clean Pac-Man baseline (actual game embed)                       ║
+  ║  - v1-v9: Placeholder sections with CSS art hints of future juice       ║
+  ║  - Future: Carousel showing candidate concepts for next version          ║
+  ║                                                                          ║
+  ║  SCROLLTHROUGH LEVELS:                                                   ║
+  ║  1. VOID — "In the beginning there was nothing"                          ║
+  ║  2. DARK AGES — "A bunch of boring stuff happened"                       ║
+  ║  3. PAC-MAN — First game, clean baseline                                 ║
+  ║  4. v0 — Clean baseline JUICE-MAN                                         ║
+  ║  5. v1-v9 — Progressively juicier versions (placeholders)               ║
+  ║  6. THE FUTURE — Carousel for upcoming version                           ║
+  ║                                                                          ║
+  ║  COLOR PROGRESSION:                                                       ║
+  ║  - Sections 1-2: Monochrome/dark                                        ║
+  ║  - Section 3: Classic Pac-Man yellows/blues                             ║
+  ║  ║- Sections 4+: Increasingly saturated neons → rainbow → reality-bending ║
+  ║                                                                          ║
+  ║  ANIMATION INTENSITY SCALE:                                               ║
+  ║  - Section 1: None (static void)                                         ║
+  ║  - Section 2: Subtle ambient (slow pulse)                                ║
+  ║  - Section 3: Basic motion (bouncing arrow)                             ║
+  ║  ║- Sections 4+: Escalating — particles → shakes → screen effects        ║
+  ╚═══════════════════════════════════════════════════════════════════════════╝
+-->
+
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — Edit these to retheme the entire page
+   ══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --void-bg: #000000;
+  --void-text: #111111;
+  --dark-bg: #0a0a0f;
+  --dark-text: #333333;
+  --classic-bg: #00001a;
+  --classic-yellow: #ffff00;
+  --classic-blue: #0000ff;
+  --classic-pink: #ffb8ff;
+  --classic-red: #ff0000;
+  --classic-orange: #ffb852;
+  --classic-cyan: #00ffff;
+  --juice-neon: #00ff88;
+  --juice-hot: #ff0066;
+  --juice-electric: #00ffff;
+  --juice-rainbow-1: #ff0000;
+  --juice-rainbow-2: #ff8800;
+  --juice-rainbow-3: #ffff00;
+  --juice-rainbow-4: #00ff00;
+  --juice-rainbow-5: #0088ff;
+  --juice-rainbow-6: #8800ff;
+  --juice-rainbow-7: #ff00ff;
+  --the-future-bg: #0d0015;
+
+  --font-display: 'Courier New', Courier, monospace;
+  --font-text: Georgia, 'Times New Roman', serif;
+
+  --section-min-height: 100vh;
+  --screenshot-radius: 8px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   GLOBAL RESET & BASE
+   ══════════════════════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #333 #000;
+}
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+body {
+  font-family: var(--font-text);
+  background: var(--void-bg);
+  color: var(--void-text);
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCROLL REVEAL SYSTEM
+   Elements with .reveal class animate when they enter viewport
+   ══════════════════════════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-60px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-right {
+  opacity: 0;
+  transform: translateX(60px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-scale {
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal-scale.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Staggered delays for child elements */
+.stagger > *:nth-child(1) { transition-delay: 0.1s; }
+.stagger > *:nth-child(2) { transition-delay: 0.2s; }
+.stagger > *:nth-child(3) { transition-delay: 0.3s; }
+.stagger > *:nth-child(4) { transition-delay: 0.4s; }
+.stagger > *:nth-child(5) { transition-delay: 0.5s; }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECTION 1: THE VOID
+   "In the beginning there was nothing"
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-void {
+  min-height: var(--section-min-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--void-bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.section-void::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(50,50,50,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(50,50,50,0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.void-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 4vw, 3rem);
+  color: #1a1a1a;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0 2rem;
+  animation: void-flicker 4s ease-in-out infinite;
+}
+
+@keyframes void-flicker {
+  0%, 100% { opacity: 0.02; }
+  50% { opacity: 0.04; }
+}
+
+/* Bouncing Arrow */
+.bounce-arrow {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: bounce 2s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.bounce-arrow span {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: #222;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+.arrow-down {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 20px solid #1a1a1a;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(15px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECTION 2: THE DARK AGES
+   "A bunch of boring stuff happened"
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-dark-ages {
+  min-height: var(--section-min-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--dark-bg);
+  position: relative;
+  padding: 4rem 2rem;
+}
+
+.dark-ages-text {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 2.2rem);
+  color: var(--dark-text);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-align: center;
+  animation: subtle-pulse 6s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+}
+
+/* Era dots — visual metaphor for boring time */
+.era-dots {
+  display: flex;
+  gap: 2rem;
+  margin-top: 4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 600px;
+}
+
+.era-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1a1a1a;
+  animation: dot-glow 3s ease-in-out infinite;
+}
+
+.era-dot:nth-child(2) { animation-delay: 0.5s; }
+.era-dot:nth-child(3) { animation-delay: 1s; }
+.era-dot:nth-child(4) { animation-delay: 1.5s; }
+.era-dot:nth-child(5) { animation-delay: 2s; }
+
+@keyframes dot-glow {
+  0%, 100% { opacity: 0.2; box-shadow: none; }
+  50% { opacity: 0.4; box-shadow: 0 0 6px rgba(255,255,255,0.1); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECTION 3: PAC-MAN EMERGENCE
+   "... and then PAC-MAN was created"
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-pacman {
+  min-height: var(--section-min-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--classic-bg);
+  position: relative;
+  padding: 4rem 2rem;
+  overflow: hidden;
+}
+
+/* Classic grid background */
+.section-pacman::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,0,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+.pacman-headline {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 4rem);
+  color: var(--classic-yellow);
+  text-align: center;
+  margin-bottom: 2rem;
+  text-shadow:
+    0 0 10px rgba(255,255,0,0.5),
+    0 0 20px rgba(255,255,0,0.3),
+    0 0 40px rgba(255,255,0,0.2);
+  position: relative;
+  z-index: 1;
+}
+
+.pacman-subtext {
+  font-family: var(--font-text);
+  font-size: clamp(1rem, 2vw, 1.3rem);
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+  max-width: 600px;
+  font-style: italic;
+  margin-bottom: 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* Pac-Man CSS Art */
+.pacman-art {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.pacman-body {
+  width: 0;
+  height: 0;
+  border-right: 60px solid transparent;
+  border-top: 30px solid var(--classic-yellow);
+  border-bottom: 30px solid var(--classic-yellow);
+  border-radius: 0 100px 100px 0;
+  animation: chomp 0.5s ease-in-out infinite;
+  position: relative;
+}
+
+.pacman-body::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--classic-red);
+  border-radius: 50%;
+  top: 18px;
+  left: 42px;
+}
+
+.pacman-body::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #000;
+  border-radius: 50%;
+  top: 18px;
+  left: 50px;
+}
+
+@keyframes chomp {
+  0%, 100% { border-right-color: transparent; }
+  50% { border-right-color: var(--classic-yellow); }
+}
+
+/* Ghost dots */
+.ghost-dots {
+  display: flex;
+  gap: 15px;
+  margin-top: 3rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ghost {
+  width: 30px;
+  height: 34px;
+  background: var(--ghost-color, var(--classic-red));
+  border-radius: 50% 50% 0 0;
+  position: relative;
+  animation: ghost-float 1s ease-in-out infinite;
+}
+
+.ghost::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  top: 10px;
+  left: 5px;
+}
+
+.ghost::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  top: 10px;
+  right: 5px;
+}
+
+.ghost.red { --ghost-color: var(--classic-red); animation-delay: 0s; }
+.ghost.pink { --ghost-color: var(--classic-pink); animation-delay: 0.15s; }
+.ghost.cyan { --ghost-color: var(--classic-cyan); animation-delay: 0.3s; }
+.ghost.orange { --ghost-color: var(--classic-orange); animation-delay: 0.45s; }
+
+.ghost::before, .ghost::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  top: 10px;
+}
+
+.ghost::before { left: 5px; }
+.ghost::after { right: 5px; }
+
+.ghost.red::before, .ghost.red::after { background: #fff; }
+.ghost.pink::before, .ghost.pink::after { background: #fff; }
+.ghost.cyan::before, .ghost.cyan::after { background: #fff; }
+.ghost.orange::before, .ghost.orange::after { background: #fff; }
+
+@keyframes ghost-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   VERSION SECTION BASE STYLES
+   Shared styles for all version showcases (v0, v1, v2, etc.)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-version {
+  min-height: var(--section-min-height);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.version-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.version-number {
+  font-family: var(--font-display);
+  font-size: clamp(0.8rem, 1.5vw, 1rem);
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.version-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.version-description {
+  font-family: var(--font-text);
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+  max-width: 550px;
+  text-align: center;
+  line-height: 1.7;
+  margin-top: 1.5rem;
+  opacity: 0.85;
+}
+
+.version-screenshot {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--screenshot-radius);
+  overflow: hidden;
+  box-shadow:
+    0 4px 20px rgba(0,0,0,0.5),
+    0 0 40px rgba(var(--screenshot-glow, 0,0,0), 0.3);
+  background: #111;
+}
+
+.version-screenshot iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* Placeholder screenshot art for future versions */
+.screenshot-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 320px;
+  min-height: 240px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.placeholder-label {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v0 — CLEAN BASELINE
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v0 {
+  background: linear-gradient(180deg, #00001a 0%, #000033 100%);
+}
+
+.section-v0 .version-number { color: rgba(255,255,255,0.4); }
+.section-v0 .version-title {
+  color: var(--classic-yellow);
+  text-shadow: 0 0 20px rgba(255,255,0,0.3);
+}
+.section-v0 .version-description { color: rgba(255,255,255,0.7); }
+.section-v0 .version-screenshot { --screenshot-glow: 255,255,0; }
+.section-v0 .version-screenshot iframe {
+  width: 640px;
+  height: 480px;
+  max-width: 100%;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v1 — THE FIRST JUICE (placeholder)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v1 {
+  background: linear-gradient(180deg, #000033 0%, #000a1a 100%);
+}
+
+.section-v1 .version-number { color: rgba(0,255,136,0.5); }
+.section-v1 .version-title { color: #00ff88; text-shadow: 0 0 30px rgba(0,255,136,0.4); }
+.section-v1 .version-description { color: rgba(255,255,255,0.7); }
+.section-v1 .version-screenshot { --screenshot-glow: 0,255,136; }
+.section-v1 .version-screenshot { box-shadow: 0 0 50px rgba(0,255,136,0.2); }
+
+/* v1 placeholder art — subtle glow particles */
+.v1-art {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.v1-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #00ff88;
+  border-radius: 50%;
+  animation: v1-float 3s ease-in-out infinite;
+}
+
+.v1-particle:nth-child(1) { top: 20%; left: 30%; animation-delay: 0s; }
+.v1-particle:nth-child(2) { top: 60%; left: 70%; animation-delay: 0.5s; }
+.v1-particle:nth-child(3) { top: 40%; left: 50%; animation-delay: 1s; }
+.v1-particle:nth-child(4) { top: 70%; left: 20%; animation-delay: 1.5s; }
+.v1-particle:nth-child(5) { top: 30%; left: 80%; animation-delay: 2s; }
+
+@keyframes v1-float {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.5; }
+  50% { transform: translateY(-20px) scale(1.5); opacity: 1; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v2 — FIRE & PASSION (placeholder)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v2 {
+  background: linear-gradient(180deg, #1a0000 0%, #330000 100%);
+}
+
+.section-v2 .version-number { color: rgba(255,100,0,0.6); }
+.section-v2 .version-title { color: #ff6600; text-shadow: 0 0 30px rgba(255,102,0,0.5); }
+.section-v2 .version-description { color: rgba(255,255,255,0.75); }
+.section-v2 .version-screenshot { --screenshot-glow: 255,102,0; }
+
+/* v2 placeholder art — flickering fire */
+.v2-art {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+
+.v2-flame {
+  width: 20px;
+  background: linear-gradient(to top, #ff6600, #ffcc00);
+  border-radius: 50% 50% 20% 20%;
+  animation: flicker 0.3s ease-in-out infinite alternate;
+}
+
+.v2-flame:nth-child(1) { height: 60px; animation-delay: 0s; }
+.v2-flame:nth-child(2) { height: 80px; animation-delay: 0.1s; }
+.v2-flame:nth-child(3) { height: 70px; animation-delay: 0.05s; }
+.v2-flame:nth-child(4) { height: 90px; animation-delay: 0.15s; }
+.v2-flame:nth-child(5) { height: 65px; animation-delay: 0.08s; }
+
+@keyframes flicker {
+  0% { transform: scaleY(1) scaleX(1); opacity: 1; }
+  100% { transform: scaleY(1.1) scaleX(0.9); opacity: 0.8; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v3 — WATER & FLOW (placeholder)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v3 {
+  background: linear-gradient(180deg, #001a33 0%, #003366 100%);
+}
+
+.section-v3 .version-number { color: rgba(0,200,255,0.6); }
+.section-v3 .version-title { color: #00ccff; text-shadow: 0 0 30px rgba(0,204,255,0.5); }
+.section-v3 .version-description { color: rgba(255,255,255,0.75); }
+.section-v3 .version-screenshot { --screenshot-glow: 0,204,255; }
+
+/* v3 placeholder art — wave */
+.v3-art {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  overflow: hidden;
+}
+
+.v3-wave {
+  position: absolute;
+  bottom: 0;
+  left: -50%;
+  width: 200%;
+  height: 60px;
+  background: linear-gradient(to top, rgba(0,150,200,0.8), transparent);
+  border-radius: 50% 50% 0 0;
+  animation: wave 2s ease-in-out infinite;
+}
+
+.v3-wave:nth-child(2) {
+  bottom: 10px;
+  opacity: 0.5;
+  animation-delay: 0.5s;
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateX(-10%) scaleY(1); }
+  50% { transform: translateX(10%) scaleY(1.2); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v4 — NEON RUSH (placeholder)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v4 {
+  background: linear-gradient(180deg, #0a001a 0%, #1a0033 100%);
+}
+
+.section-v4 .version-number { color: rgba(255,0,255,0.7); }
+.section-v4 .version-title { color: #ff00ff; text-shadow: 0 0 40px rgba(255,0,255,0.6); }
+.section-v4 .version-description { color: rgba(255,255,255,0.8); }
+.section-v4 .version-screenshot { --screenshot-glow: 255,0,255; }
+
+/* v4 placeholder art — neon lines */
+.v4-art {
+  position: relative;
+  width: 200px;
+  height: 150px;
+}
+
+.v4-line {
+  position: absolute;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #ff00ff, transparent);
+  animation: neon-slide 2s linear infinite;
+}
+
+.v4-line:nth-child(1) { top: 25%; width: 100%; animation-delay: 0s; }
+.v4-line:nth-child(2) { top: 50%; width: 80%; left: 10%; animation-delay: 0.3s; }
+.v4-line:nth-child(3) { top: 75%; width: 60%; left: 20%; animation-delay: 0.6s; }
+
+@keyframes neon-slide {
+  0% { opacity: 0; transform: translateX(-100%); }
+  50% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(100%); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v5 — RAINBOW EXPLOSION (placeholder)
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-v5 {
+  background: linear-gradient(180deg, #0d0015 0%, #1a0a2a 100%);
+}
+
+.section-v5 .version-number {
+  background: linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff00ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-v5 .version-title {
+  background: linear-gradient(90deg, #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff00ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 20px rgba(255,100,200,0.5));
+}
+
+.section-v5 .version-description { color: rgba(255,255,255,0.8); }
+.section-v5 .version-screenshot { --screenshot-glow: 255,0,255; }
+
+/* v5 placeholder art — rainbow burst */
+.v5-art {
+  position: relative;
+  width: 200px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.v5-burst {
+  width: 80px;
+  height: 80px;
+  background: conic-gradient(
+    #ff0000, #ff8800, #ffff00, #00ff00, #0088ff, #8800ff, #ff00ff, #ff0000
+  );
+  border-radius: 50%;
+  animation: rainbow-spin 4s linear infinite;
+  filter: blur(2px);
+}
+
+@keyframes rainbow-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   v6-v9 — PROGRESSIVELY WILD (placeholders)
+   Each section adds more visual chaos
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* v6 — Dragon Mode */
+.section-v6 {
+  background: linear-gradient(180deg, #1a0500 0%, #331100 100%);
+}
+
+.section-v6 .version-number { color: rgba(255,80,0,0.8); }
+.section-v6 .version-title { color: #ff5500; text-shadow: 0 0 50px rgba(255,85,0,0.7); }
+.section-v6 .version-description { color: rgba(255,255,255,0.85); }
+.section-v6 .version-screenshot { --screenshot-glow: 255,85,0; box-shadow: 0 0 60px rgba(255,85,0,0.3); }
+
+/* v7 — Electric Shock */
+.section-v7 {
+  background: linear-gradient(180deg, #000d1a 0%, #001a33 100%);
+}
+
+.section-v7 .version-number { color: rgba(0,255,255,0.8); }
+.section-v7 .version-title { color: #00ffff; text-shadow: 0 0 40px rgba(0,255,255,0.6), 0 0 80px rgba(0,255,255,0.3); }
+.section-v7 .version-description { color: rgba(255,255,255,0.85); }
+.section-v7 .version-screenshot { --screenshot-glow: 0,255,255; box-shadow: 0 0 60px rgba(0,255,255,0.3); }
+
+/* v8 — Cosmic Chaos */
+.section-v8 {
+  background: linear-gradient(180deg, #0d001a 0%, #1a0033 50%, #00001a 100%);
+}
+
+.section-v8 .version-number {
+  color: #fff;
+  text-shadow: 0 0 10px #fff;
+}
+.section-v8 .version-title {
+  color: #fff;
+  text-shadow:
+    0 0 20px rgba(255,255,255,0.8),
+    0 0 40px rgba(138,43,226,0.6),
+    0 0 60px rgba(138,43,226,0.4);
+}
+.section-v8 .version-description { color: rgba(255,255,255,0.9); }
+.section-v8 .version-screenshot { --screenshot-glow: 138,43,226; box-shadow: 0 0 80px rgba(138,43,226,0.4); }
+
+/* v9 — THE FINAL FORM (placeholder, reality-bending) */
+.section-v9 {
+  background: #000;
+  position: relative;
+}
+
+.section-v9::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255,0,100,0.1) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0,200,255,0.1) 0%, transparent 40%);
+  animation: reality-shift 8s ease-in-out infinite;
+}
+
+.section-v9 .version-number {
+  color: #fff;
+  animation: glitch-text 0.5s ease-in-out infinite;
+}
+.section-v9 .version-title {
+  color: #fff;
+  animation: glitch-text 0.3s ease-in-out infinite;
+  text-shadow:
+    0 0 30px rgba(255,0,100,0.8),
+    0 0 60px rgba(0,200,255,0.6),
+    2px 0 10px rgba(255,0,100,0.5),
+    -2px 0 10px rgba(0,200,255,0.5);
+}
+.section-v9 .version-description { color: rgba(255,255,255,0.9); }
+.section-v9 .version-screenshot {
+  --screenshot-glow: 255,0,100;
+  box-shadow:
+    0 0 100px rgba(255,0,100,0.4),
+    0 0 150px rgba(0,200,255,0.3);
+}
+
+@keyframes reality-shift {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes glitch-text {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SECTION: THE FUTURE
+   Carousel placeholder for next version
+   ══════════════════════════════════════════════════════════════════════════ */
+.section-future {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--the-future-bg);
+  padding: 4rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated starfield background */
+.section-future::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.4), transparent),
+    radial-gradient(1px 1px at 160px 120px, rgba(255,255,255,0.7), transparent);
+  background-size: 200px 150px;
+  animation: starfield 20s linear infinite;
+}
+
+@keyframes starfield {
+  from { transform: translateY(0); }
+  to { transform: translateY(-150px); }
+}
+
+.future-header {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.future-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.5em;
+  color: rgba(255,255,255,0.4);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.future-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  color: #fff;
+  text-shadow: 0 0 30px rgba(255,255,255,0.5);
+}
+
+/* Carousel */
+.carousel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 800px;
+  overflow: hidden;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.5s ease-out;
+}
+
+.carousel-slide {
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem;
+}
+
+.carousel-slide-content {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.carousel-slide-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.carousel-slide-title {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 0.5rem;
+}
+
+.carousel-slide-desc {
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.5);
+}
+
+/* Carousel nav */
+.carousel-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+.carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.carousel-dot.active {
+  background: rgba(255,255,255,0.8);
+  transform: scale(1.3);
+}
+
+.carousel-dot:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+/* Carousel arrows */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.carousel-arrow:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.carousel-arrow.prev { left: 0; }
+.carousel-arrow.next { right: 0; }
+
+/* CTA section */
+.future-cta {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  margin-top: 3rem;
+}
+
+.future-cta p {
+  color: rgba(255,255,255,0.5);
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 1rem 2.5rem;
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #000;
+  background: linear-gradient(135deg, #fff 0%, #ddd 100%);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(255,255,255,0.2);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════════════════════════════════════════ */
+.footer {
+  padding: 3rem 2rem;
+  text-align: center;
+  background: #000;
+  border-top: 1px solid #111;
+}
+
+.footer-text {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: #333;
+  letter-spacing: 0.1em;
+}
+
+.footer-text a {
+  color: #555;
+  text-decoration: none;
+}
+
+.footer-text a:hover {
+  color: #888;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .era-dots { gap: 1rem; }
+  .ghost { width: 24px; height: 28px; }
+  .version-screenshot iframe { width: 100%; height: auto; aspect-ratio: 4/3; }
+  .carousel-arrow { display: none; }
+  .carousel-slide-content { padding: 2rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 1: THE VOID
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-void">
+  <p class="void-text reveal">In the beginning there was nothing</p>
+  <div class="bounce-arrow">
+    <span>scroll down</span>
+    <div class="arrow-down"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 2: THE DARK AGES
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-dark-ages">
+  <p class="dark-ages-text reveal">A bunch of boring stuff happened</p>
+  <div class="era-dots stagger">
+    <div class="era-dot reveal"></div>
+    <div class="era-dot reveal"></div>
+    <div class="era-dot reveal"></div>
+    <div class="era-dot reveal"></div>
+    <div class="era-dot reveal"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 3: PAC-MAN EMERGENCE
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-pacman">
+  <h1 class="pacman-headline reveal">...and then PAC-MAN was created</h1>
+  <p class="pacman-subtext reveal">1980. A yellow circle with an appetite. Four colorful ghosts.<br>A legend was born.</p>
+  <div class="pacman-art reveal">
+    <div class="pacman-body"></div>
+  </div>
+  <div class="ghost-dots reveal">
+    <div class="ghost red"></div>
+    <div class="ghost pink"></div>
+    <div class="ghost cyan"></div>
+    <div class="ghost orange"></div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 4: v0 — CLEAN BASELINE
+     The first version of JUICE-MAN — no juice yet, just Pac-Man
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v0">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 0</span>
+    <h2 class="version-title reveal">The Clean Baseline</h2>
+    <p class="version-description reveal">
+      Where it all began. A pristine Pac-Man experience — pellets, ghosts, fruit,
+      combo system. No visual effects. No particles. Just pure, unadulterated
+      arcade action. This is the foundation upon which all future juice is built.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <!--
+      EMBEDDED GAME: level_1.html
+      The v0 screenshot is the actual game itself.
+      Future versions: Replace iframe with actual screenshot images.
+    -->
+    <iframe src="levels/level_1.html" title="JUICE-MAN v0"></iframe>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 5: v1 — THE FIRST JUICE
+     Placeholder: Particle effects, score popups, subtle screen glow
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v1">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 1</span>
+    <h2 class="version-title reveal">The First Juice</h2>
+    <p class="version-description reveal">
+      The first drops of magic. Particle effects on ghost consumption.
+      Score popups that float upward and fade. A subtle screen glow pulses
+      with the action. The first taste of what this project will become.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder v1-art">
+      <!-- CSS art placeholder hinting at particles -->
+      <div class="v1-particle"></div>
+      <div class="v1-particle"></div>
+      <div class="v1-particle"></div>
+      <div class="v1-particle"></div>
+      <div class="v1-particle"></div>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 6: v2 — FIRE & PASSION
+     Placeholder: Fire particles, dramatic lighting, flame trails
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v2">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 2</span>
+    <h2 class="version-title reveal">Fire & Passion</h2>
+    <p class="version-description reveal">
+      The game learns to feel. Flames lick the edges of the maze.
+      Ghost chain combos trigger fire breath effects. Screen shake on big plays.
+      Intensity scales with your combo — the longer you survive, the hotter it gets.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder v2-art">
+      <div class="v2-flame"></div>
+      <div class="v2-flame"></div>
+      <div class="v2-flame"></div>
+      <div class="v2-flame"></div>
+      <div class="v2-flame"></div>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 7: v3 — WATER & FLOW
+     Placeholder: Liquid animations, ripple effects, underwater ambiance
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v3">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 3</span>
+    <h2 class="version-title reveal">Water & Flow</h2>
+    <p class="version-description reveal">
+      The maze becomes alive. Waves undulate across the playfield.
+      Ghost trails leave ripples. When power pellets activate, the entire
+      screen shimmers like underwater. A shift to something more fluid.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder v3-art">
+      <div class="v3-wave"></div>
+      <div class="v3-wave"></div>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 8: v4 — NEON RUSH
+     Placeholder: Cyberpunk aesthetic, neon trails, electric atmosphere
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v4">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 4</span>
+    <h2 class="version-title reveal">Neon Rush</h2>
+    <p class="version-description reveal">
+      The grid comes alive. Hot pink and electric blue slash across the maze.
+      Pac-Man leaves a neon wake. Ghost deaths explode into laser lines.
+      The game enters a cyberpunk fever dream.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder v4-art">
+      <div class="v4-line"></div>
+      <div class="v4-line"></div>
+      <div class="v4-line"></div>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 9: v5 — RAINBOW EXPLOSION
+     Placeholder: Full spectrum color, chromatic chaos, visual overload
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v5">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 5</span>
+    <h2 class="version-title reveal">Rainbow Explosion</h2>
+    <p class="version-description reveal">
+      The game embraces chaos. Color cycles through the entire spectrum.
+      Every action creates rainbow bursts. The HUD itself pulses with prismatic
+      light. This is what maximum juice looks like — overwhelming, glorious,
+      and absolutely unhinged.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder v5-art">
+      <div class="v5-burst"></div>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 10: v6 — DRAGON MODE
+     Placeholder: Inferno effects, scale patterns, reaper death animation
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v6">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 6</span>
+    <h2 class="version-title reveal">Dragon Mode</h2>
+    <p class="version-description reveal">
+      The dragon awakens. The maze becomes a volcanic hellscape.
+      Fire rains from above. Ghost chains trigger increasingly apocalyptic
+      words — "DRAGON ASCENDANT", "WORLDBURNER", "THE ETERNAL FLAME".
+      This is not a game anymore. This is a legend.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <defs>
+          <linearGradient id="fireGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" style="stop-color:#ff2200"/>
+            <stop offset="50%" style="stop-color:#ff6600"/>
+            <stop offset="100%" style="stop-color:#ffcc00"/>
+          </linearGradient>
+        </defs>
+        <path d="M60 10 L80 50 L110 60 L80 70 L60 110 L40 70 L10 60 L40 50 Z"
+              fill="url(#fireGrad)" opacity="0.8">
+          <animate attributeName="opacity" values="0.8;1;0.8" dur="0.5s" repeatCount="indefinite"/>
+        </path>
+        <circle cx="50" cy="50" r="5" fill="#fff"/>
+        <circle cx="70" cy="50" r="5" fill="#fff"/>
+      </svg>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 11: v7 — ELECTRIC SHOCK
+     Placeholder: Lightning effects, Tesla coils, electric maze
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v7">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 7</span>
+    <h2 class="version-title reveal">Electric Shock</h2>
+    <p class="version-description reveal">
+      Voltage multiplied. Lightning crackles across the maze.
+      Ghost deaths create Tesla coil arcs. The power mode is a lightning storm.
+      Every pellet crackles with energy. Touch this and you'll feel it.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <path d="M60 5 L65 45 L80 50 L65 55 L75 95 L60 60 L55 95 L45 55 L30 50 L55 45 Z"
+              fill="#00ffff" stroke="#fff" stroke-width="1">
+          <animate attributeName="opacity" values="1;0.5;1" dur="0.1s" repeatCount="indefinite"/>
+        </path>
+        <circle cx="50" cy="35" r="3" fill="#fff"/>
+        <circle cx="70" cy="35" r="3" fill="#fff"/>
+      </svg>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 12: v8 — COSMIC CHAOS
+     Placeholder: Space effects, star fields, gravitational distortion
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v8">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 8</span>
+    <h2 class="version-title reveal">Cosmic Chaos</h2>
+    <p class="version-description reveal">
+      The game transcends reality. Stars swirl in the background.
+      Pac-Man bends space around itself. Ghosts orbit like planets.
+      The score counter uses mathematical notation for large numbers.
+      You are not playing a game. You are touching the universe.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="40" fill="none" stroke="url(#cosmicGrad)" stroke-width="2">
+          <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="10s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="60" cy="60" r="25" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="1">
+          <animateTransform attributeName="transform" type="rotate" from="360 60 60" to="0 60 60" dur="8s" repeatCount="indefinite"/>
+        </circle>
+        <circle cx="60" cy="60" r="10" fill="#fff">
+          <animate attributeName="r" values="10;12;10" dur="1s" repeatCount="indefinite"/>
+        </circle>
+        <defs>
+          <linearGradient id="cosmicGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#ff00ff"/>
+            <stop offset="50%" style="stop-color:#00ffff"/>
+            <stop offset="100%" style="stop-color:#ff00ff"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 13: v9 — THE FINAL FORM
+     Placeholder: Reality-breaking effects, glitch aesthetics, the end of the scale
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-version section-v9">
+  <div class="version-header">
+    <span class="version-number reveal">Level 1 — Version 9</span>
+    <h2 class="version-title reveal">THE FINAL FORM</h2>
+    <p class="version-description reveal">
+      The ceiling shatters. Every effect from every version before activates simultaneously.
+      Screen tears. Colors bleed. The game no longer respects its own boundaries.
+      This is the end of the level 1 journey. This is what maximum juice means.
+      The only way forward is a new level entirely.
+    </p>
+  </div>
+  <div class="version-screenshot reveal-scale">
+    <div class="screenshot-placeholder" style="background: #050005;">
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <rect x="0" y="0" width="120" height="120" fill="#000">
+          <animate attributeName="fill" values="#000;#1a0033;#ff0066;#000" dur="2s" repeatCount="indefinite"/>
+        </rect>
+        <text x="60" y="65" text-anchor="middle" font-family="monospace" font-size="14" fill="#fff">
+          <tspan>
+            <animate attributeName="opacity" values="1;0;1" dur="0.2s" repeatCount="indefinite"/>
+            REALITY
+          </tspan>
+        </text>
+      </svg>
+      <span class="placeholder-label">Screenshot coming soon</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION 14: THE FUTURE — NEXT VERSION CAROUSEL
+     Placeholder carousel showing potential next versions (voting incomplete)
+     ══════════════════════════════════════════════════════════════════════════ -->
+<section class="section-future">
+  <div class="future-header">
+    <p class="future-label reveal">Coming Soon</p>
+    <h2 class="future-title reveal">The Next Version</h2>
+  </div>
+
+  <!--
+    CAROUSEL: Add future version concepts here
+    Each .carousel-slide represents one candidate concept.
+    When voting is complete, remove unused concepts and add actual screenshots.
+
+    TO ADD A NEW CONCEPT:
+    1. Copy an existing .carousel-slide block
+    2. Update the icon (emoji or SVG), title, and description
+    3. Update the total number of slides in the carousel JavaScript below
+  -->
+  <div class="carousel reveal">
+    <button class="carousel-arrow prev" onclick="moveCarousel(-1)">&#8249;</button>
+    <div class="carousel-track" id="carouselTrack">
+
+      <div class="carousel-slide">
+        <div class="carousel-slide-content">
+          <span class="carousel-slide-icon">&#127918;</span>
+          <h3 class="carousel-slide-title">Theme: Space Opera</h3>
+          <p class="carousel-slide-desc">Pac-Man among the stars. Planets, comets, and cosmic dust.</p>
+        </div>
+      </div>
+
+      <div class="carousel-slide">
+        <div class="carousel-slide-content">
+          <span class="carousel-slide-icon">&#128163;</span>
+          <h3 class="carousel-slide-title">Theme: Underwater</h3>
+          <p class="carousel-slide-desc">Bubbles, currents, and deep sea creatures in the maze.</p>
+        </div>
+      </div>
+
+      <div class="carousel-slide">
+        <div class="carousel-slide-content">
+          <span class="carousel-slide-icon">&#9762;</span>
+          <h3 class="carousel-slide-title">Theme: Retro Arcade</h3>
+          <p class="carousel-slide-desc">CRT scanlines, pixel-perfect ghosts, arcade cabinet aesthetic.</p>
+        </div>
+      </div>
+
+      <div class="carousel-slide">
+        <div class="carousel-slide-content">
+          <span class="carousel-slide-icon">&#127795;</span>
+          <h3 class="carousel-slide-title">Theme: Nature</h3>
+          <p class="carousel-slide-desc">The maze grows. Vines, flowers, and forest creatures.</p>
+        </div>
+      </div>
+
+      <div class="carousel-slide">
+        <div class="carousel-slide-content">
+          <span class="carousel-slide-icon">&#129514;</span>
+          <h3 class="carousel-slide-title">Your Idea Here</h3>
+          <p class="carousel-slide-desc">Vote for your favorite theme or propose a new one!</p>
+        </div>
+      </div>
+
+    </div>
+    <button class="carousel-arrow next" onclick="moveCarousel(1)">&#8250;</button>
+  </div>
+
+  <div class="carousel-nav" id="carouselNav">
+    <!-- Dots generated by JavaScript -->
+  </div>
+
+  <div class="future-cta reveal">
+    <p>Help decide what comes next.</p>
+    <a href="https://github.com/brycecovert/JUICE-MAN" target="_blank" rel="noopener" class="cta-button">
+      Submit Your Vision
+    </a>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     FOOTER
+     ══════════════════════════════════════════════════════════════════════════ -->
+<footer class="footer">
+  <p class="footer-text">
+    <a href="https://github.com/brycecovert/JUICE-MAN" target="_blank" rel="noopener">JUICE-MAN</a>
+    — A democratic Pac-Man experience
+  </p>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+<script>
+/*
+  ╔═══════════════════════════════════════════════════════════════════════════╗
+  ║  JUICE-MAN HOMEPAGE — JavaScript                                         ║
+  ║  Contains:                                                               ║
+  ║  1. Scroll reveal system (intersection observer)                        ║
+  ║  2. Carousel functionality                                               ║
+  ║  3. Section intensity effects (scroll-driven visual escalation)          ║
+  ║                                                                          ║
+  ║  TO CUSTOMIZE:                                                           ║
+  ║  - Adjust reveal animation timings in CSS                                 ║
+  ║  - Add new carousel slides in HTML                                       ║
+  ║  - Modify scroll-based effects in the scroll handler                     ║
+  ╚═══════════════════════════════════════════════════════════════════════════╝
+*/
+
+// ══════════════════════════════════════════════════════════════════════════
+// 1. SCROLL REVEAL SYSTEM
+// Uses IntersectionObserver to trigger animations on scroll
+// ══════════════════════════════════════════════════════════════════════════
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      // Optionally unobserve after reveal (one-time animation)
+      // revealObserver.unobserve(entry.target);
+    }
+  });
+}, {
+  threshold: 0.15,
+  rootMargin: '0px 0px -50px 0px'
+});
+
+// Observe all reveal elements
+document.querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale').forEach(el => {
+  revealObserver.observe(el);
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// 2. CAROUSEL FUNCTIONALITY
+// ══════════════════════════════════════════════════════════════════════════
+let currentSlide = 0;
+const totalSlides = 5; // Update this when adding/removing slides
+
+function initCarousel() {
+  const navContainer = document.getElementById('carouselNav');
+  for (let i = 0; i < totalSlides; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+    dot.onclick = () => goToSlide(i);
+    navContainer.appendChild(dot);
+  }
+}
+
+function updateCarousel() {
+  const track = document.getElementById('carouselTrack');
+  track.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+  // Update dots
+  document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
+    dot.classList.toggle('active', i === currentSlide);
+  });
+}
+
+function moveCarousel(direction) {
+  currentSlide = (currentSlide + direction + totalSlides) % totalSlides;
+  updateCarousel();
+}
+
+function goToSlide(index) {
+  currentSlide = index;
+  updateCarousel();
+}
+
+// Auto-advance carousel every 5 seconds
+setInterval(() => moveCarousel(1), 5000);
+
+initCarousel();
+
+// ══════════════════════════════════════════════════════════════════════════
+// 3. SCROLL-BASED SECTION EFFECTS
+// Apply progressive intensity based on scroll position
+// ══════════════════════════════════════════════════════════════════════════
+let lastScrollY = 0;
+let scrollTimeout;
+
+window.addEventListener('scroll', () => {
+  lastScrollY = window.scrollY;
+
+  // Debounce for performance
+  clearTimeout(scrollTimeout);
+  scrollTimeout = setTimeout(() => {
+    applyScrollEffects();
+  }, 16);
+}, { passive: true });
+
+function applyScrollEffects() {
+  const scrollY = lastScrollY;
+  const windowHeight = window.innerHeight;
+
+  // Example: Add parallax to void section text
+  const voidSection = document.querySelector('.section-void');
+  if (voidSection) {
+    const rect = voidSection.getBoundingClientRect();
+    if (rect.top < windowHeight && rect.bottom > 0) {
+      const progress = 1 - (rect.top / windowHeight);
+      const opacity = Math.max(0, Math.min(0.05, 0.02 + progress * 0.03));
+      voidSection.querySelector('.void-text').style.opacity = opacity;
+    }
+  }
+
+  // Example: Increase dark-ages text visibility on scroll
+  const darkAgesSection = document.querySelector('.section-dark-ages');
+  if (darkAgesSection) {
+    const rect = darkAgesSection.getBoundingClientRect();
+    if (rect.top < windowHeight && rect.bottom > 0) {
+      const progress = 1 - (rect.top / windowHeight);
+      const opacity = Math.max(0.3, Math.min(0.6, 0.3 + progress * 0.3));
+      darkAgesSection.querySelector('.dark-ages-text').style.opacity = opacity;
+    }
+  }
+}
+
+// Initial call
+applyScrollEffects();
+
+/*
+  ╔═══════════════════════════════════════════════════════════════════════════╗
+  ║  ADDING NEW VERSION SECTIONS                                             ║
+  ║                                                                          ║
+  ║  1. Copy an existing version section block                               ║
+  ║  2. Update:                                                              ║
+  ║     - Section class: section-v{N}                                        ║
+  ║     - Version number: Level 1 — Version N                                ║
+  ║     - Version title: Appropriate title                                   ║
+  ║     - Description: What makes this version special                       ║
+  ║     - Screenshot placeholder or actual iframe/image                      ║
+  ║     - CSS variables if unique colors needed                             ║
+  ║                                                                          ║
+  ║  3. Add CSS for .section-v{N} with:                                       ║
+  ║     - Background gradient                                               ║
+  ║     - Text colors that fit the theme                                     ║
+  ║     - Any custom animations                                              ║
+  ║                                                                          ║
+  ║  4. For actual screenshots when versions are built:                      ║
+  ║     - Replace .screenshot-placeholder with an <img> or <iframe>          ║
+  ║     - Screenshots should be named: screenshots/v{N}-screenshot.png       ║
+  ║     - Recommended size: 640x480px                                        ║
+  ╚═══════════════════════════════════════════════════════════════════════════╝
+*/
+</script>
+</body>
+</html>
