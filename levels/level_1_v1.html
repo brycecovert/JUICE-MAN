@@ -25,8 +25,6 @@ const ctx=canvas.getContext('2d');
 const COLS=21,ROWS=21;
 const T_WALL=0,T_PATH=1,T_PELLET=2,T_POWER=3,T_DOOR=4,T_PACMAN=5,T_GHOUSE=6,T_FRUIT=7;
 const GHOST_COLORS=['#ff0000','#ffb8ff','#00ffff','#ffb852'];
-const RAINBOW=['#ff0044','#ff6600','#ffcc00','#33ff00','#00ccff','#6633ff','#cc33ff','#ff3399'];
-const VIBRANT_COLORS=['#0066ff','#ff00aa','#33ff33','#ff6600','#9933ff','#ffcc00','#00ccaa','#ff3366','#66ff33','#ff66cc'];
 const POWER_DURATION=8000,POWER_WARN=2000;
 const COMBO_WINDOW=4000;
 const BASE_SPEED=3.45,SPEED_INC=0.15;
@@ -34,6 +32,8 @@ const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
 const HUD_H=52;
+const RAINBOW=['#ff0044','#ff6600','#ffcc00','#33ff00','#00ccff','#6633ff','#ff33cc','#ff0088','#00ff88','#ffaa00'];
+const FLASH_COLORS=['#0066ff','#ff00aa','#00ff44','#ff8800','#aa00ff','#ffff00','#00ffcc','#ff4466','#44aaff','#ff66cc'];
 
 /* symmetrical maze (21x21) */
 const MAZE=[
@@ -69,8 +69,9 @@ let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
 let lastT=0,dt=0;
+let globalTime=0;
 let ts=0,ox=0,oy=0;
-let wallFlashCells=[];
+let wallFlash=[];
 
 /* resize */
 function resize(){
@@ -109,42 +110,24 @@ function dist(ax,ay,bx,by){return Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by));}
 
 /* maze init */
 function initMaze(){
-  maze=[];pelletCount=0;wallFlashCells=[];
+  maze=[];pelletCount=0;wallFlash=[];
   for(let r=0;r<ROWS;r++){
-    maze[r]=[];
+    maze[r]=[];wallFlash[r]=[];
     for(let c=0;c<COLS;c++){
       if(MAZE[r][c]===T_PELLET||MAZE[r][c]===T_POWER) pelletCount++;
       maze[r][c]=MAZE[r][c];
       if(MAZE[r][c]===T_WALL){
-        wallFlashCells.push({r:r,c:c,
-          color:VIBRANT_COLORS[Math.random()*VIBRANT_COLORS.length|0],
-          nextColor:VIBRANT_COLORS[Math.random()*VIBRANT_COLORS.length|0],
+        wallFlash[r][c]={
+          color:FLASH_COLORS[Math.random()*FLASH_COLORS.length|0],
+          nextColor:FLASH_COLORS[Math.random()*FLASH_COLORS.length|0],
           timer:100+Math.random()*200,
-          fadeDuration:50+Math.random()*50,
-          fading:false,opacity:1});
+          fadeT:0,
+          fadeDur:50+Math.random()*50
+        };
       }
     }
   }
   totalPellets=pelletCount;
-}
-function updWallFlash(d){
-  const ms=d*1000;
-  for(const w of wallFlashCells){
-    if(w.fading){
-      w.fadeTimer-=ms;
-      if(w.fadeTimer<=0){
-        w.fading=false;w.color=w.nextColor;
-        w.nextColor=VIBRANT_COLORS[Math.random()*VIBRANT_COLORS.length|0];
-        w.timer=100+Math.random()*200;w.opacity=1;
-        w.fadeTimer=w.fadeDuration;
-      }else{
-        w.opacity=w.fadeTimer/w.fadeDuration;
-      }
-    }else{
-      w.timer-=ms;
-      if(w.timer<=0){w.fading=true;w.fadeTimer=w.fadeDuration;}
-    }
-  }
 }
 
 /* pacman */
@@ -425,32 +408,32 @@ function nextLevel(){
 
 /* drawing */
 function drawMaze(){
-  const t=performance.now();
-  const neonHue=(t*0.08)%360;
-  const neonCol=`hsl(${neonHue},100%,60%)`;
+  const now=Date.now();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
-      const cell=maze[r][c],x=tx(c),y=ty(r),s=ts;
-      if(cell===T_WALL){
-        let wf=wallFlashCells.find(w=>w.r===r&&w.c===c);
-        if(wf){
-          ctx.fillStyle=wf.color;
-          ctx.globalAlpha=wf.opacity;
-          ctx.fillRect(x+2,y+2,s-4,s-4);
-          ctx.globalAlpha=1;
-        }
+      if(maze[r][c]!==T_WALL) continue;
+      const wf=wallFlash[r]&&wallFlash[r][c];
+      if(!wf) continue;
+      const x=tx(c),y=ty(r),s=ts;
+      let alpha=1;
+      if(wf.fadeT<wf.fadeDur){
+        alpha=wf.fadeT/wf.fadeDur;
       }
+      ctx.fillStyle=wf.color;
+      ctx.globalAlpha=alpha;
+      ctx.fillRect(x,y,s,s);
+      ctx.globalAlpha=1;
     }
   }
-  ctx.strokeStyle=neonCol;
-  ctx.lineWidth=2;
-  ctx.shadowColor=neonCol;
+  ctx.shadowColor=RAINBOW[(globalTime*2|0)%RAINBOW.length];
   ctx.shadowBlur=6;
+  ctx.strokeStyle=ctx.shadowColor;
+  ctx.lineWidth=2;
   ctx.beginPath();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
       if(maze[r][c]!==T_WALL) continue;
-      const x=tx(c),y=ty(r);
+      const x=tx(c),y=ty(r),s=ts;
       if(r===0||maze[r-1][c]!==T_WALL){ctx.moveTo(x,y);ctx.lineTo(x+s,y);}
       if(r===ROWS-1||maze[r+1][c]!==T_WALL){ctx.moveTo(x,y+s);ctx.lineTo(x+s,y+s);}
       if(c===0||maze[r][c-1]!==T_WALL){ctx.moveTo(x,y);ctx.lineTo(x,y+s);}
@@ -492,6 +475,7 @@ function drawPM(){
   ctx.beginPath();
   ctx.arc(cx,cy,r,angle+p.mouth,angle+Math.PI*2-p.mouth);
   ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
+  /* eye */
   ctx.fillStyle='#000';
   const ex=cx+Math.cos(angle-0.8)*r*0.4,ey=cy+Math.sin(angle-0.8)*r*0.4;
   ctx.beginPath();ctx.arc(ex,ey,r*0.08,0,Math.PI*2);ctx.fill();
@@ -715,11 +699,30 @@ function drawMobile(){
 
 /* main update */
 function update(d){
-  updWallFlash(d);
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
+  }
+  updWallFlash(d);
+}
+function updWallFlash(d){
+  const dm=d*1000;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const wf=wallFlash[r]&&wallFlash[r][c];
+      if(!wf) continue;
+      wf.timer-=dm;
+      if(wf.timer<=0){
+        wf.color=wf.nextColor;
+        wf.nextColor=FLASH_COLORS[Math.random()*FLASH_COLORS.length|0];
+        wf.timer=100+Math.random()*200;
+        wf.fadeT=0;
+      }
+      if(wf.fadeT<wf.fadeDur){
+        wf.fadeT+=dm;
+      }
+    }
   }
 }
 
@@ -740,7 +743,7 @@ function draw(){
 /* loop */
 const ghLink=document.getElementById('gh-link');
 function loop(t){
-  dt=Math.min((t-lastT)/1000,0.05);lastT=t;
+  dt=Math.min((t-lastT)/1000,0.05);lastT=t;globalTime+=dt;
   update(dt);draw();
   ghLink.classList.toggle('visible',state==='title'||state==='gameOver');
   requestAnimationFrame(loop);
