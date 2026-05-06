@@ -185,67 +185,64 @@ jobs:
           }
           echo "JavaScript syntax OK"
 
-      - name: Browser test and validate
+    - name: Browser test and validate
         id: browser_test
         run: |
           LEVEL="${{ steps.find_spec.outputs.level }}"
           VERSION="${{ steps.find_spec.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
-          ERROR_LOG="/tmp/js_errors.txt"
-          CONSOLE_LOG="/tmp/console_logs.json"
-          
-          mkdir -p "$SCREENSHOT_DIR"
+          PREFIX="level_${LEVEL}_v${VERSION}"
           
           echo "================================"
           echo "BROWSER TEST STEP"
           echo "================================"
           echo "Testing file: $OUTPUT_FILE"
           
-          # Open the HTML file in agent-browser
-          agent-browser --allow-file-access open "file://$PWD/$OUTPUT_FILE"
+          set +e
+          ./scripts/capture-screenshot.sh "$OUTPUT_FILE" "$SCREENSHOT_DIR" "$PREFIX"
+          EXIT_CODE=$?
+          set -e
           
-          # Wait 1 second for page to load
-          agent-browser wait 1000
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
+          VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
+          ERROR_LOG="${SCREENSHOT_DIR}/${PREFIX}-errors.txt"
           
-          # Press space to start the game
-          agent-browser press Space
+          ERROR_COUNT=0
+          if [ -f "$ERROR_LOG" ]; then
+            ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
+          fi
           
-          # Wait another second for game to react
-          agent-browser wait 1000
-          
-          # Take screenshot
-          agent-browser screenshot "$SCREENSHOT_PATH"
-          echo "Screenshot saved to: $SCREENSHOT_PATH"
-          
-          # Collect JavaScript errors
-          agent-browser errors > "$ERROR_LOG" 2>&1 || true
-          echo "JS errors saved to: $ERROR_LOG"
-          
-          # Collect console logs
-          agent-browser console --json > "$CONSOLE_LOG" 2>&1 || true
-          echo "Console logs saved to: $CONSOLE_LOG"
-          
-          # Check if errors exist
-          ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
+          echo "video_path=$VIDEO_PATH" >> $GITHUB_OUTPUT
           echo "error_log=$ERROR_LOG" >> $GITHUB_OUTPUT
           
-          if [ "$ERROR_COUNT" -gt 0 ]; then
-            echo "WARNING: Found $ERROR_COUNT JavaScript errors"
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "WARNING: Found JavaScript errors"
             cat "$ERROR_LOG"
           else
             echo "No JavaScript errors found"
           fi
           
-          # Close browser
           agent-browser close
-          
           echo "Browser test complete"
 
-      - name: Fix JavaScript errors with AI
+       - name: Upload screenshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
+          path: ${{ steps.browser_test.outputs.screenshot_path }}
+          retention-days: 30
+
+       - name: Upload video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
+          path: ${{ steps.browser_test.outputs.video_path }}
+          retention-days: 30
+
+       - name: Fix JavaScript errors with AI
         if: steps.browser_test.outputs.error_count > 0
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -287,26 +284,29 @@ jobs:
           VERSION="${{ steps.find_spec.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
-          ERROR_LOG="/tmp/js_errors_fixed.txt"
-          
-          mkdir -p "$SCREENSHOT_DIR"
+          PREFIX="level_${LEVEL}_v${VERSION}"
           
           echo "================================"
           echo "RE-TEST AFTER FIX"
           echo "================================"
           
-          # Re-open and test
-          agent-browser --allow-file-access open "file://$PWD/$OUTPUT_FILE"
-          agent-browser wait 1000
-          agent-browser press Space
-          agent-browser wait 1000
-          agent-browser screenshot "$SCREENSHOT_PATH"
-          agent-browser errors > "$ERROR_LOG" 2>&1 || true
+          set +e
+          ./scripts/capture-screenshot.sh "$OUTPUT_FILE" "$SCREENSHOT_DIR" "$PREFIX"
+          EXIT_CODE=$?
+          set -e
           
-          ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
+          VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
+          ERROR_LOG="${SCREENSHOT_DIR}/${PREFIX}-errors.txt"
+          
+          ERROR_COUNT=0
+          if [ -f "$ERROR_LOG" ]; then
+            ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
+          fi
+          
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
+          echo "video_path=$VIDEO_PATH" >> $GITHUB_OUTPUT
           
           if [ "$ERROR_COUNT" -gt 0 ]; then
             echo "WARNING: Still found $ERROR_COUNT JavaScript errors after fix attempt"
@@ -317,7 +317,7 @@ jobs:
           
           agent-browser close
 
-      - name: Commit generated file and screenshot to PR branch
+      - name: Commit generated file, screenshot, and video to PR branch
         run: |
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
@@ -326,13 +326,18 @@ jobs:
           VERSION="${{ steps.find_spec.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          SCREENSHOT_PATH="${SCREENSHOT_DIR}/level_${LEVEL}_v${VERSION}.png"
+          PREFIX="level_${LEVEL}_v${VERSION}"
+          SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
+          VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
 
           git add "$OUTPUT_FILE"
-          
-          # Also add screenshot if it exists
+
+          # Also add screenshot and video if they exist
           if [ -f "$SCREENSHOT_PATH" ]; then
             git add "$SCREENSHOT_PATH"
+          fi
+          if [ -f "$VIDEO_PATH" ]; then
+            git add "$VIDEO_PATH"
           fi
           
           if git diff --cached --quiet; then
@@ -343,23 +348,24 @@ jobs:
             echo "Committed and pushed generated file and screenshot"
           fi
 
-      - name: Upload screenshot to PR
+       - name: Upload screenshot and video to PR
         uses: actions/github-script@v7
         with:
           script: |
             const prNumber = context.issue.number;
             const level = '${{ steps.find_spec.outputs.level }}';
             const version = '${{ steps.find_spec.outputs.version }}';
-            
+
             const repo = context.repo.repo;
             const owner = context.repo.owner;
             const branch = context.payload.pull_request.head.ref;
-            
+
             const screenshotUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.png?raw=true`;
-            
+            const videoUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.webm?raw=true`;
+
             const errorCount = '${{ steps.browser_test.outputs.error_count }}';
             const fixedErrorCount = '${{ steps.browser_test_2.outputs.error_count }}';
-            
+
             let statusText = '';
             if (fixedErrorCount && fixedErrorCount !== '') {
               if (parseInt(fixedErrorCount) === 0) {
@@ -372,23 +378,26 @@ jobs:
             } else {
               statusText = `⚠️ ${errorCount} JavaScript errors detected (fix attempt made)`;
             }
-            
+
             // Create or update comment with screenshot
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number: prNumber
             });
-            
+
             const screenshotComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('Browser Test Screenshot'));
-            
+
             const body = `## 🖼️ Browser Test Screenshot
-            
+
             Level: **${level}** | Version: **v${version}**
-            
+
             ### Screenshot
             ![JUICE-MAN Screenshot](${screenshotUrl})
-            
+
+            ### Video
+            [Watch gameplay video](${videoUrl})
+
             ### JavaScript Validation
             ${statusText}
             
