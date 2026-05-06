@@ -82,18 +82,13 @@ Every added effect should pass the "noticeable at a glance" test: a player watch
 
 ## Browser Validation
 
-After generating code, the AI agent must validate the HTML file using agent-browser:
+After generating code, the AI agent must validate the HTML file:
 
-1. Open the generated HTML file in agent-browser (`agent-browser --allow-file-access open file://...`)
-2. Wait 1 second for the page to fully load
-3. Press the Space key to start the game
-4. Wait 1 second for the game to react
-5. Take a screenshot of the running game
-6. Check for JavaScript errors using `agent-browser errors`
-7. If any JavaScript errors are found, fix them with minimal surgical edits
-8. Re-test until no errors remain
+1. Run `./scripts/capture-screenshot.sh levels/level_N.html` to open the game, capture a screenshot and video recording, and check for JavaScript errors
+2. If any JavaScript errors are found, fix them with minimal surgical edits
+3. Re-run the script until no errors remain
 
-The screenshot and error report are automatically attached to the PR. Any JavaScript errors must be resolved before the PR is considered complete.
+The screenshot, video, and error report are automatically attached to the PR. Any JavaScript errors must be resolved before the PR is considered complete.
 
 ## Credits
 
