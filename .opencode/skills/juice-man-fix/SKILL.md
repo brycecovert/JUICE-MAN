@@ -18,6 +18,7 @@ The file to fix is at the path specified by the OUTPUT_FILE environment variable
 3. Preserve all existing functionality
 4. Do not add code comments
 5. Make minimal, surgical fixes
+6. Ensure that everytging works, no errors allowed. be on the lookout for anything that might fail.
 
 ## JavaScript Errors
 
