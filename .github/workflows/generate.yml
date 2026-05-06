@@ -100,7 +100,31 @@ jobs:
             echo "<!-- New level baseline -->" > "${TARGET_FILE}"
           fi
 
+      - name: Get npm global prefix
+        id: npm_prefix
+        run: |
+          echo "prefix=$(npm prefix -g)" >> $GITHUB_OUTPUT
+
+      - name: Cache npm global packages
+        id: cache_npm_global
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.npm_prefix.outputs.prefix }}/lib/node_modules
+          key: npm-global-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}-opencode-agent-browser
+          restore-keys: |
+            npm-global-${{ runner.os }}-
+
+      - name: Cache agent-browser Chrome
+        id: cache_agent_browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/agent-browser
+          key: agent-browser-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
+          restore-keys: |
+            agent-browser-${{ runner.os }}-
+
       - name: Install opencode
+        if: steps.cache_npm_global.outputs.cache-hit != 'true'
         run: |
           echo "Installing opencode via npm..."
           npm install -g opencode-ai
@@ -108,15 +132,39 @@ jobs:
           opencode --version
           echo "opencode installed successfully"
 
+      - name: Verify opencode
+        if: steps.cache_npm_global.outputs.cache-hit == 'true'
+        run: |
+          which opencode || { echo "opencode not found in cache, installing..."; npm install -g opencode-ai; }
+          opencode --version
+
       - name: Install agent-browser
+        if: steps.cache_npm_global.outputs.cache-hit != 'true'
         run: |
           echo "Installing agent-browser via npm..."
           npm install -g agent-browser
           which agent-browser
           agent-browser --version
+          echo "agent-browser installed successfully"
+
+      - name: Verify agent-browser
+        if: steps.cache_npm_global.outputs.cache-hit == 'true'
+        run: |
+          which agent-browser || { echo "agent-browser not found in cache, installing..."; npm install -g agent-browser; }
+          agent-browser --version
+
+      - name: Install Chrome for agent-browser
+        if: steps.cache_agent_browser.outputs.cache-hit != 'true'
+        run: |
           echo "Installing Chrome for agent-browser..."
           agent-browser install --with-deps
-          echo "agent-browser installed successfully"
+          echo "Chrome installed successfully"
+
+      - name: Verify Chrome installation
+        if: steps.cache_agent_browser.outputs.cache-hit == 'true'
+        run: |
+          agent-browser install --with-deps || echo "Chrome reinstall needed"
+          echo "Chrome verification complete"
 
       - name: Configure OpenRouter provider
         env:

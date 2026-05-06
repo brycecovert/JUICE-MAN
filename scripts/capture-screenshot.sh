@@ -37,6 +37,26 @@ fi
 
 mkdir -p "$OUTPUT_DIR"
 
+# Ensure agent-browser is installed
+if ! command -v agent-browser &> /dev/null; then
+  echo "-> Installing agent-browser..."
+  npm install -g @anthropic-ai/agent-browser 2>/dev/null || pip install agent-browser 2>/dev/null || echo "WARNING: agent-browser not found and automatic installation failed."
+fi
+
+# Ensure ffmpeg is installed for video recording
+if ! command -v ffmpeg &> /dev/null; then
+  echo "-> Installing ffmpeg..."
+  if command -v apt-get &> /dev/null; then
+    sudo apt-get update && sudo apt-get install -y ffmpeg
+  elif command -v brew &> /dev/null; then
+    brew install ffmpeg
+  elif command -v apk &> /dev/null; then
+    apk add ffmpeg
+  else
+    echo "WARNING: ffmpeg not found and no supported package manager detected. Video recording may fail."
+  fi
+fi
+
 echo "=== JUICE-MAN Browser Validation ==="
 echo "File: $HTML_FILE"
 echo "Screenshot: $SCREENSHOT"
@@ -99,7 +119,6 @@ if [ -n "$ERRORS" ] && [ "$ERRORS" != "No errors found" ]; then
   echo "Errors saved: $ERROR_LOG"
   exit 1
 else
-  echo "$ERRORS" > "$ERROR_LOG"
   echo "PASS: No JavaScript errors"
 fi
 
