@@ -32,8 +32,6 @@ const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
 const HUD_H=52;
-const RAINBOW=['#ff0044','#ff6600','#ffcc00','#33ff00','#00ccff','#6633ff','#ff33cc','#ff0088','#00ff88','#ffaa00'];
-const FLASH_COLORS=['#0066ff','#ff00aa','#00ff44','#ff8800','#aa00ff','#ffff00','#00ffcc','#ff4466','#44aaff','#ff66cc'];
 
 /* symmetrical maze (21x21) */
 const MAZE=[
@@ -69,9 +67,11 @@ let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
 let lastT=0,dt=0;
-let globalTime=0;
 let ts=0,ox=0,oy=0;
-let wallFlash=[];
+let globalTime=0;
+let wallFlashState=[];
+const VIBRANT_COLORS=['#0088ff','#ff00aa','#00ff44','#ff8800','#aa00ff','#ffff00','#00ffff','#ff4488','#44ff88','#ffaa00','#8844ff','#ff0044','#00aaff','#ff00ff','#88ff00','#ff6600','#4400ff','#ff0088'];
+const RAINBOW=['#ff0000','#ff8800','#ffff00','#00ff00','#00ffff','#0088ff','#8800ff','#ff00ff'];
 
 /* resize */
 function resize(){
@@ -110,21 +110,13 @@ function dist(ax,ay,bx,by){return Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by));}
 
 /* maze init */
 function initMaze(){
-  maze=[];pelletCount=0;wallFlash=[];
+  maze=[];pelletCount=0;wallFlashState=[];
   for(let r=0;r<ROWS;r++){
-    maze[r]=[];wallFlash[r]=[];
+    maze[r]=[];wallFlashState[r]=[];
     for(let c=0;c<COLS;c++){
       if(MAZE[r][c]===T_PELLET||MAZE[r][c]===T_POWER) pelletCount++;
       maze[r][c]=MAZE[r][c];
-      if(MAZE[r][c]===T_WALL){
-        wallFlash[r][c]={
-          color:FLASH_COLORS[Math.random()*FLASH_COLORS.length|0],
-          nextColor:FLASH_COLORS[Math.random()*FLASH_COLORS.length|0],
-          timer:100+Math.random()*200,
-          fadeT:0,
-          fadeDur:50+Math.random()*50
-        };
-      }
+      wallFlashState[r][c]={color:VIBRANT_COLORS[Math.random()*VIBRANT_COLORS.length|0],timer:Math.random()*0.3+0.1,flashTimer:0,nextFlash:Math.random()*0.2+0.1};
     }
   }
   totalPellets=pelletCount;
@@ -408,27 +400,47 @@ function nextLevel(){
 
 /* drawing */
 function drawMaze(){
-  const now=Date.now();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
-      if(maze[r][c]!==T_WALL) continue;
-      const wf=wallFlash[r]&&wallFlash[r][c];
-      if(!wf) continue;
-      const x=tx(c),y=ty(r),s=ts;
-      let alpha=1;
-      if(wf.fadeT<wf.fadeDur){
-        alpha=wf.fadeT/wf.fadeDur;
+      if(maze[r][c]===T_WALL){
+        const wf=wallFlashState[r][c];
+        wf.flashTimer+=dt;
+        if(wf.flashTimer>=wf.nextFlash){
+          wf.flashTimer=0;
+          wf.nextFlash=Math.random()*0.2+0.1;
+          wf.fadeStart=wf.color;
+          wf.color=VIBRANT_COLORS[Math.random()*VIBRANT_COLORS.length|0];
+          wf.fadeTime=0;
+          wf.fadeDuration=Math.random()*0.05+0.05;
+        }
+        if(wf.fadeTime!==undefined&&wf.fadeTime<wf.fadeDuration){
+          wf.fadeTime+=dt;
+        }
       }
-      ctx.fillStyle=wf.color;
-      ctx.globalAlpha=alpha;
-      ctx.fillRect(x,y,s,s);
-      ctx.globalAlpha=1;
     }
   }
-  ctx.shadowColor=RAINBOW[(globalTime*2|0)%RAINBOW.length];
-  ctx.shadowBlur=6;
-  ctx.strokeStyle=ctx.shadowColor;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const cell=maze[r][c],x=tx(c),y=ty(r),s=ts;
+      if(cell===T_WALL){
+        const wf=wallFlashState[r][c];
+        let fillCol=wf.color;
+        if(wf.fadeTime!==undefined&&wf.fadeTime<wf.fadeDuration){
+          const t=wf.fadeTime/wf.fadeDuration;
+          fillCol=blendColors(wf.fadeStart,wf.color,t);
+        }
+        ctx.fillStyle=fillCol;
+        ctx.fillRect(x+1,y+1,s-2,s-2);
+      }
+    }
+  }
+  const neonIdx=Math.floor(globalTime*2)%RAINBOW.length;
+  const neonCol=RAINBOW[neonIdx];
+  const glowCol=RAINBOW[(neonIdx+1)%RAINBOW.length];
+  ctx.strokeStyle=neonCol;
   ctx.lineWidth=2;
+  ctx.shadowColor=glowCol;
+  ctx.shadowBlur=8;
   ctx.beginPath();
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++){
@@ -466,6 +478,12 @@ function drawMaze(){
       }
     }
   }
+}
+function blendColors(c1,c2,t){
+  const r1=parseInt(c1.slice(1,3),16),g1=parseInt(c1.slice(3,5),16),b1=parseInt(c1.slice(5,7),16);
+  const r2=parseInt(c2.slice(1,3),16),g2=parseInt(c2.slice(3,5),16),b2=parseInt(c2.slice(5,7),16);
+  const r=Math.round(r1+(r2-r1)*t),g=Math.round(g1+(g2-g1)*t),b=Math.round(b1+(b2-b1)*t);
+  return`rgb(${r},${g},${b})`;
 }
 function drawPM(){
   if(!pm) return;
@@ -699,30 +717,11 @@ function drawMobile(){
 
 /* main update */
 function update(d){
+  globalTime+=d;
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
-  }
-  updWallFlash(d);
-}
-function updWallFlash(d){
-  const dm=d*1000;
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      const wf=wallFlash[r]&&wallFlash[r][c];
-      if(!wf) continue;
-      wf.timer-=dm;
-      if(wf.timer<=0){
-        wf.color=wf.nextColor;
-        wf.nextColor=FLASH_COLORS[Math.random()*FLASH_COLORS.length|0];
-        wf.timer=100+Math.random()*200;
-        wf.fadeT=0;
-      }
-      if(wf.fadeT<wf.fadeDur){
-        wf.fadeT+=dm;
-      }
-    }
   }
 }
 
@@ -743,7 +742,7 @@ function draw(){
 /* loop */
 const ghLink=document.getElementById('gh-link');
 function loop(t){
-  dt=Math.min((t-lastT)/1000,0.05);lastT=t;globalTime+=dt;
+  dt=Math.min((t-lastT)/1000,0.05);lastT=t;
   update(dt);draw();
   ghLink.classList.toggle('visible',state==='title'||state==='gameOver');
   requestAnimationFrame(loop);
