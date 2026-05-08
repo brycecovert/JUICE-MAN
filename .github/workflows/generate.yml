@@ -24,52 +24,71 @@ jobs:
           git fetch origin main --depth=1
           echo "origin/main is at: $(git rev-parse origin/main)"
 
-      - name: Find spec file in PR
-        id: find_spec
+      - name: Detect mode and targets
+        id: detect
         run: |
-          # Try diff against origin/main first
+          # Check for spec file in diff against main
           SPEC_FILE=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
-          
+
           # Fallback: search working tree for spec files
           if [ -z "$SPEC_FILE" ]; then
             SPEC_FILE=$(find specs -maxdepth 2 -name 'v*.md' 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
           fi
-          
-          if [ -z "$SPEC_FILE" ]; then
-            echo "ERROR: No spec file found. Expected path: specs/level_N/vN.md"
-            exit 1
+
+          if [ -n "$SPEC_FILE" ] && [ -f "$SPEC_FILE" ]; then
+            LEVEL=$(echo "$SPEC_FILE" | sed -E 's|specs/level_([0-9]+)/v[0-9]+\.md|\1|')
+            VERSION=$(echo "$SPEC_FILE" | sed -E 's|specs/level_[0-9]+/v([0-9]+)\.md|\1|')
+            HTML_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+
+            # Check if HTML file already exists on HEAD (user-modified, re-validate only)
+            if git show HEAD:"$HTML_FILE" > /dev/null 2>&1; then
+              MODE="revalidate"
+              echo "Spec exists but HTML file already present — re-validating user-modified version"
+            else
+              MODE="generate"
+              echo "New spec detected — generating from scratch"
+            fi
+          else
+            # No spec — check if this is a user fix to an existing generated HTML file
+            HTML_FILE=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^levels/level_[0-9]+_v[0-9]+\.html$' | head -n 1)
+
+            if [ -n "$HTML_FILE" ] && [ -f "$HTML_FILE" ]; then
+              MODE="revalidate"
+              LEVEL=$(echo "$HTML_FILE" | sed -E 's|levels/level_([0-9]+)_v[0-9]+\.html|\1|')
+              VERSION=$(echo "$HTML_FILE" | sed -E 's|levels/level_[0-9]+_v([0-9]+)\.html|\1|')
+              SPEC_FILE=""
+              echo "No spec — re-validating user-modified HTML: $HTML_FILE"
+            else
+              echo "ERROR: No spec file and no modified HTML file found. Nothing to do."
+              exit 1
+            fi
           fi
-          
-          if [ ! -f "$SPEC_FILE" ]; then
-            echo "ERROR: Spec file not found in working tree: $SPEC_FILE"
-            exit 1
-          fi
-          
-          echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
-          LEVEL=$(echo "$SPEC_FILE" | sed -E 's|specs/level_([0-9]+)/v[0-9]+\.md|\1|')
-          VERSION=$(echo "$SPEC_FILE" | sed -E 's|specs/level_[0-9]+/v([0-9]+)\.md|\1|')
+
+          echo "mode=$MODE" >> $GITHUB_OUTPUT
           echo "level=$LEVEL" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Found spec: $SPEC_FILE (level $LEVEL, version $VERSION)"
+          echo "html_file=$HTML_FILE" >> $GITHUB_OUTPUT
+          echo "spec_file=$SPEC_FILE" >> $GITHUB_OUTPUT
 
       - name: Validate spec word count
+        if: steps.detect.outputs.spec_file != ''
         run: |
-          SPEC_FILE="${{ steps.find_spec.outputs.spec_file }}"
+          SPEC_FILE="${{ steps.detect.outputs.spec_file }}"
           WORD_COUNT=$(wc -w < "$SPEC_FILE")
           echo "Spec word count: $WORD_COUNT"
           if [ "$WORD_COUNT" -gt 300 ]; then
             echo "ERROR: Spec exceeds 300 words (found $WORD_COUNT)"
             exit 1
           fi
-          echo "Word count OK ($WORD_COUNT ≤ 300)"
+          echo "Word count OK ($WORD_COUNT <= 300)"
 
       - name: Validate version matches next_version
+        if: steps.detect.outputs.spec_file != ''
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           NEXT_VERSION_FILE="specs/level_${LEVEL}/next_version"
-          
-          # Fetch next_version from main branch
+
           git show origin/main:${NEXT_VERSION_FILE} > /tmp/next_version_from_main 2>/dev/null || {
             echo "ERROR: Could not read ${NEXT_VERSION_FILE} from main branch"
             exit 1
@@ -77,7 +96,7 @@ jobs:
           EXPECTED_VERSION=$(cat /tmp/next_version_from_main | tr -d '[:space:]')
           echo "Expected version (from main): $EXPECTED_VERSION"
           echo "PR version: $VERSION"
-          
+
           if [ "$VERSION" != "$EXPECTED_VERSION" ]; then
             echo "ERROR: Version mismatch. Expected v${EXPECTED_VERSION}, got v${VERSION}"
             exit 1
@@ -85,12 +104,13 @@ jobs:
           echo "Version match OK"
 
       - name: Copy previous version to target path
+        if: steps.detect.outputs.mode == 'generate'
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           CANONICAL_FILE="levels/level_${LEVEL}.html"
-          TARGET_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          
+          TARGET_FILE="${{ steps.detect.outputs.html_file }}"
+
           if git show origin/main:${CANONICAL_FILE} > "${TARGET_FILE}" 2>/dev/null; then
             echo "Copied previous version to: ${TARGET_FILE}"
             wc -l "${TARGET_FILE}"
@@ -171,18 +191,17 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
           echo "Configuring OpenRouter provider..."
-          # Write auth file directly for non-interactive CI
           mkdir -p ~/.local/share/opencode
           printf '{"openrouter":{"type":"api","key":"%s"}}\n' "${OPENROUTER_API_KEY}" > ~/.local/share/opencode/auth.json
           echo "Provider configured"
-          # Verify provider is set up
           opencode providers list
 
       - name: Generate new version with AI
+        if: steps.detect.outputs.mode == 'generate'
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TARGET_FILE: "levels/level_${{ steps.find_spec.outputs.level }}_v${{ steps.find_spec.outputs.version }}.html"
-          SPEC_FILE: "${{ steps.find_spec.outputs.spec_file }}"
+          TARGET_FILE: "${{ steps.detect.outputs.html_file }}"
+          SPEC_FILE: "${{ steps.detect.outputs.spec_file }}"
         run: |
           echo "================================"
           echo "AI GENERATION STEP"
@@ -192,34 +211,29 @@ jobs:
           echo "TARGET_FILE: $TARGET_FILE"
           echo "SPEC_FILE: $SPEC_FILE"
           echo ""
-          
-          # Run opencode with skill invocation
+
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
             -m openrouter/qwen/qwen3.6-plus \
-            --title "Generate JUICE-MAN v${{ steps.find_spec.outputs.version }}" \
+            --title "Generate JUICE-MAN v${{ steps.detect.outputs.version }}" \
             <<< "/juice-man-generate"
           echo "Generation complete"
 
-      - name: Verify generated file
+      - name: Verify HTML file exists
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          
+          OUTPUT_FILE="${{ steps.detect.outputs.html_file }}"
+
           if [ -f "$OUTPUT_FILE" ]; then
-            echo "Generated file exists: $OUTPUT_FILE"
+            echo "HTML file exists: $OUTPUT_FILE"
             wc -l "$OUTPUT_FILE"
           else
-            echo "ERROR: Generated file not found: $OUTPUT_FILE"
+            echo "ERROR: HTML file not found: $OUTPUT_FILE"
             exit 1
           fi
 
-      - name: Verify generated JavaScript syntax
+      - name: Verify JavaScript syntax
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          OUTPUT_FILE="${{ steps.detect.outputs.html_file }}"
 
           echo "Checking JavaScript syntax in $OUTPUT_FILE..."
           node -e "const fs=require('fs');const js=fs.readFileSync('${OUTPUT_FILE}','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];fs.writeFileSync('/tmp/extracted.js',js);" || {
@@ -236,57 +250,57 @@ jobs:
       - name: Browser test and validate
         id: browser_test
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
           PREFIX="level_${LEVEL}_v${VERSION}"
-          
+
           echo "================================"
           echo "BROWSER TEST STEP"
           echo "================================"
           echo "Testing file: $OUTPUT_FILE"
-          
+
           set +e
           ./scripts/capture-screenshot.sh "$OUTPUT_FILE" "$SCREENSHOT_DIR" "$PREFIX"
           EXIT_CODE=$?
           set -e
-          
+
           SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
           VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
           ERROR_LOG="${SCREENSHOT_DIR}/${PREFIX}-errors.txt"
-          
+
           ERROR_COUNT=0
           if [ -f "$ERROR_LOG" ]; then
             ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
           fi
-          
+
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
           echo "video_path=$VIDEO_PATH" >> $GITHUB_OUTPUT
           echo "error_log=$ERROR_LOG" >> $GITHUB_OUTPUT
-          
+
           if [ "$EXIT_CODE" -ne 0 ]; then
             echo "WARNING: Found JavaScript errors"
             cat "$ERROR_LOG"
           else
             echo "No JavaScript errors found"
           fi
-          
+
           agent-browser close
           echo "Browser test complete"
 
       - name: Upload screenshot artifact
         uses: actions/upload-artifact@v4
         with:
-          name: screenshot-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
+          name: screenshot-level-${{ steps.detect.outputs.level }}-v${{ steps.detect.outputs.version }}
           path: ${{ steps.browser_test.outputs.screenshot_path }}
           retention-days: 30
 
       - name: Upload video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: video-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
+          name: video-level-${{ steps.detect.outputs.level }}-v${{ steps.detect.outputs.version }}
           path: ${{ steps.browser_test.outputs.video_path }}
           retention-days: 30
 
@@ -295,11 +309,11 @@ jobs:
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           ERROR_LOG="${{ steps.browser_test.outputs.error_log }}"
-          
+
           echo "================================"
           echo "ERROR FIXING STEP"
           echo "================================"
@@ -308,15 +322,12 @@ jobs:
           echo "Errors found:"
           cat "$ERROR_LOG"
           echo ""
-          
-          # Run opencode with skill invocation for error fixing
+
           export OUTPUT_FILE="${OUTPUT_FILE}"
           export ERROR_LOG="${ERROR_LOG}"
-          
+
           echo "Invoking juice-man-fix skill..."
-          echo "OUTPUT_FILE: $OUTPUT_FILE"
-          echo "ERROR_LOG: $ERROR_LOG"
-          
+
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
             -m openrouter/qwen/qwen3.6-plus \
@@ -328,41 +339,41 @@ jobs:
         if: steps.browser_test.outputs.error_count > 0
         id: browser_test_2
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
           PREFIX="level_${LEVEL}_v${VERSION}"
-          
+
           echo "================================"
           echo "RE-TEST AFTER FIX"
           echo "================================"
-          
+
           set +e
           ./scripts/capture-screenshot.sh "$OUTPUT_FILE" "$SCREENSHOT_DIR" "$PREFIX"
           EXIT_CODE=$?
           set -e
-          
+
           SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
           VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
           ERROR_LOG="${SCREENSHOT_DIR}/${PREFIX}-errors.txt"
-          
+
           ERROR_COUNT=0
           if [ -f "$ERROR_LOG" ]; then
             ERROR_COUNT=$(wc -l < "$ERROR_LOG" | tr -d ' ')
           fi
-          
+
           echo "error_count=$ERROR_COUNT" >> $GITHUB_OUTPUT
           echo "screenshot_path=$SCREENSHOT_PATH" >> $GITHUB_OUTPUT
           echo "video_path=$VIDEO_PATH" >> $GITHUB_OUTPUT
-          
+
           if [ "$ERROR_COUNT" -gt 0 ]; then
             echo "WARNING: Still found $ERROR_COUNT JavaScript errors after fix attempt"
             cat "$ERROR_LOG"
           else
             echo "All JavaScript errors fixed"
           fi
-          
+
           agent-browser close
 
       - name: Commit generated file, screenshot, and video to PR branch
@@ -370,30 +381,34 @@ jobs:
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
 
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
           PREFIX="level_${LEVEL}_v${VERSION}"
           SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
           VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
+          MODE="${{ steps.detect.outputs.mode }}"
 
           git add "$OUTPUT_FILE"
 
-          # Also add screenshot and video if they exist
           if [ -f "$SCREENSHOT_PATH" ]; then
             git add "$SCREENSHOT_PATH"
           fi
           if [ -f "$VIDEO_PATH" ]; then
             git add "$VIDEO_PATH"
           fi
-          
+
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
+            if [ "$MODE" = "revalidate" ]; then
+              git commit -m "Re-validate level ${LEVEL} v${VERSION} — regenerate screenshots and video"
+            else
+              git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
+            fi
             git push origin HEAD:${{ github.head_ref }}
-            echo "Committed and pushed generated file and screenshot"
+            echo "Committed and pushed changes"
           fi
 
       - name: Upload screenshot and video to PR
@@ -401,8 +416,9 @@ jobs:
         with:
           script: |
             const prNumber = context.issue.number;
-            const level = '${{ steps.find_spec.outputs.level }}';
-            const version = '${{ steps.find_spec.outputs.version }}';
+            const level = '${{ steps.detect.outputs.level }}';
+            const version = '${{ steps.detect.outputs.version }}';
+            const mode = '${{ steps.detect.outputs.mode }}';
 
             const repo = context.repo.repo;
             const owner = context.repo.owner;
@@ -427,7 +443,8 @@ jobs:
               statusText = `⚠️ ${errorCount} JavaScript errors detected (fix attempt made)`;
             }
 
-            // Create or update comment with screenshot
+            const modeLabel = mode === 'revalidate' ? '🔄 Re-validated' : '🤖 Generated';
+
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
@@ -438,7 +455,7 @@ jobs:
 
             const body = `## 🖼️ Browser Test Screenshot
 
-            Level: **${level}** | Version: **v${version}**
+            **${modeLabel}** — Level: **${level}** | Version: **v${version}**
 
             ### Screenshot
             ![JUICE-MAN Screenshot](${screenshotUrl})
@@ -448,10 +465,10 @@ jobs:
 
             ### JavaScript Validation
             ${statusText}
-            
+
             ---
             *Screenshot taken after pressing space to start the game.*`;
-            
+
             if (screenshotComment) {
               await github.rest.issues.updateComment({
                 owner,
@@ -470,50 +487,49 @@ jobs:
 
       - name: Update previews manifest
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ steps.detect.outputs.level }}"
+          VERSION="${{ steps.detect.outputs.version }}"
           PR_NUMBER="${{ github.event.number }}"
-          
+          MODE="${{ steps.detect.outputs.mode }}"
+
           MANIFEST_FILE="previews.json"
-          
-          # Read existing manifest or create empty array
+
           if [ -f "$MANIFEST_FILE" ]; then
             cat "$MANIFEST_FILE" > /tmp/previews_manifest.json
           else
             echo '[]' > /tmp/previews_manifest.json
           fi
-          
-          # Use Node.js to update JSON (available in ubuntu-latest)
+
           node -e "
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('/tmp/previews_manifest.json', 'utf8'));
             const prNumber = ${PR_NUMBER};
             const existingIndex = manifest.findIndex(p => p.pr_number === prNumber);
-            
+
             const entry = {
               pr_number: prNumber,
               level: ${LEVEL},
               version: ${VERSION},
               title: 'PR #' + prNumber + ' - Level ' + ${LEVEL} + ' v' + ${VERSION},
               preview_url: 'https://htmlpreview.github.io/?https://github.com/${{ github.repository }}/blob/${{ github.head_ref }}/levels/level_${LEVEL}_v${VERSION}.html',
-              status: 'generated',
+              status: '${MODE}' === 'revalidate' ? 'revalidated' : 'generated',
               updated_at: new Date().toISOString()
             };
-            
+
             if (existingIndex >= 0) {
               manifest[existingIndex] = entry;
             } else {
               manifest.push(entry);
             }
-            
+
             fs.writeFileSync('${MANIFEST_FILE}', JSON.stringify(manifest, null, 2));
             console.log('Manifest updated');
           "
-          
+
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
           git add "$MANIFEST_FILE"
-          
+
           if git diff --cached --quiet; then
             echo "No manifest changes"
           else
@@ -526,42 +542,45 @@ jobs:
         with:
           script: |
             const prNumber = context.issue.number;
-            const level = '${{ steps.find_spec.outputs.level }}';
-            const version = '${{ steps.find_spec.outputs.version }}';
+            const level = '${{ steps.detect.outputs.level }}';
+            const version = '${{ steps.detect.outputs.version }}';
+            const mode = '${{ steps.detect.outputs.mode }}';
             const repo = context.repo.repo;
             const owner = context.repo.owner;
             const branch = context.payload.pull_request.head.ref;
-            
+
             const generatedFile = `levels/level_${level}_v${version}.html`;
             const previewUrl = `https://htmlpreview.github.io/?https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile}`;
             const diffUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files`;
-            
-            const body = `## 🤖 JUICE-MAN Version Generated
-            
+
+            const modeLabel = mode === 'revalidate' ? 'Re-validated' : 'Generated';
+            const modeEmoji = mode === 'revalidate' ? '🔄' : '🤖';
+
+            const body = `## ${modeEmoji} JUICE-MAN Version ${modeLabel}
+
             Level: **${level}** | Version: **v${version}**
-            
+
             ### Files
-            - Generated: [\`${generatedFile}\`](https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile})
+            - HTML: [\`${generatedFile}\`](https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile})
             - Diff: [View changes](${diffUrl})
-            
+
             ### Preview
-            - [Play generated version](${previewUrl}) (via HTMLPreview)
-            
+            - [Play version](${previewUrl}) (via HTMLPreview)
+
             ### Status
-            ✅ Generation successful
-            
+            ✅ ${modeLabel} successfully
+
             ---
             *This comment will be updated on each push.*`;
-            
-            // Find existing comment
+
             const { data: comments } = await github.rest.issues.listComments({
               owner,
               repo,
               issue_number: prNumber
             });
-            
-            const botComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('JUICE-MAN Version Generated'));
-            
+
+            const botComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('JUICE-MAN Version'));
+
             if (botComment) {
               await github.rest.issues.updateComment({
                 owner,
@@ -577,5 +596,3 @@ jobs:
                 body
               });
             }
-
-
