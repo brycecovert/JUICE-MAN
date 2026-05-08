@@ -141,7 +141,7 @@ function initMaze(){
 function init3D(){
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x000022);
-  camera=new THREE.PerspectiveCamera(55,ASPECT_RATIO,0.1,100);
+  camera=new THREE.PerspectiveCamera(75,ASPECT_RATIO,0.1,100);
   const c3d=document.getElementById('c3d');
   renderer=new THREE.WebGLRenderer({canvas:c3d,antialias:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
@@ -626,9 +626,9 @@ function upd3DObjects(d){
 function updCamera(){
   if(!pm||!camera) return;
   const px=pm.x+0.5,pz=pm.y+0.5;
-  const offset=2.5;
+  const offset=6;
   const target=new THREE.Vector3(px,0.3,pz);
-  const camPos=new THREE.Vector3(px+offset*0.5,2.2+offset*0.3,pz+offset);
+  const camPos=new THREE.Vector3(px+offset*0.8,4.5+offset*0.3,pz+offset);
   if(camShake.timer<camShake.duration){
     camShake.timer+=clock3D.getDelta()||0.016;
     const intensity=camShake.intensity*(1-camShake.timer/camShake.duration);
@@ -822,7 +822,7 @@ function update(d){
 }
 
 function draw(){
-  ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
   if(renderer){
     upd3DObjects(dt);
