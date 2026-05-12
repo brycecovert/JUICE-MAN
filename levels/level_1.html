@@ -32,6 +32,8 @@ const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
 const HUD_H=52;
+const MAX_PARTICLES=1500;
+const RAINBOW=[0,30,60,120,180,240,270,300];
 
 /* symmetrical maze (21x21) */
 const MAZE=[
@@ -66,8 +68,10 @@ let powerOn=false,powerTime=0,ghostChain=0;
 let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
-let lastT=0,dt=0;
+let lastT=0,dt=0,globalTime=0;
 let ts=0,ox=0,oy=0;
+const MAX_TRAIL=60;
+let chromaticTrail=[];
 
 /* resize */
 function resize(){
@@ -255,6 +259,7 @@ function updGhost(g,d){
     if(g.prog>=ts){
       g.gx=g.fx;g.gy=g.fy;g.gx=wrap(g.gx);g.gy=wrap(g.gy);g.x=g.gx;g.y=g.gy;
       g.moving=false;g.prog=0;
+      pushChromaticTrail(g);
     }else{
       const t=g.prog/ts;
       g.x=g.gx+(g.fx-g.gx)*t;
@@ -274,7 +279,32 @@ function updPower(d){
   if(powerTime<=0){powerOn=false;for(const g of ghosts) g.scared=false;}
 }
 
-/* collision */
+/* chromatic trails */
+function updChromaticTrail(d){
+  for(let i=chromaticTrail.length-1;i>=0;i--){
+    chromaticTrail[i].life-=d;
+    if(chromaticTrail[i].life<=0) chromaticTrail.splice(i,1);
+  }
+}
+function pushChromaticTrail(g){
+  if(g.inHouse||g.eaten) return;
+  const cx=tx(g.x)+ts/2,cy=ty(g.y)+ts/2;
+  chromaticTrail.push({x:cx,y:cy,idx:g.idx,life:0.35,maxLife:0.35});
+  if(chromaticTrail.length>MAX_TRAIL) chromaticTrail.shift();
+}
+function drawChromaticTrail(){
+  for(const t of chromaticTrail){
+    const a=t.life/t.maxLife;
+    const off=(1-a)*6;
+    const hue=(globalTime*60+t.idx*90)%360;
+    ctx.globalAlpha=a*0.35;
+    ctx.fillStyle=`hsla(${hue},100%,60%,1)`;
+    ctx.beginPath();ctx.arc(t.x-off,t.y-off,ts*0.2*a,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`hsla(${(hue+120)%360},100%,60%,1)`;
+    ctx.beginPath();ctx.arc(t.x+off,t.y+off,ts*0.2*a,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
 function collisions(){
   const px=pm.x,py=pm.y,thr=0.65;
   for(const g of ghosts){
@@ -399,7 +429,8 @@ function drawMaze(){
     for(let c=0;c<COLS;c++){
       const cell=maze[r][c],x=tx(c),y=ty(r),cx2=x+ts/2,cy2=y+ts/2,s=ts;
       if(cell===T_WALL){
-        ctx.fillStyle='#1a1aff';
+        const hue=(globalTime*40+(r+c)*12)%360;
+        ctx.fillStyle=`hsla(${hue},85%,50%,1)`;
         ctx.fillRect(x,y,s,s);
         ctx.fillStyle='#000';
         ctx.fillRect(x+2,y+2,s-4,s-4);
@@ -409,12 +440,15 @@ function drawMaze(){
         ctx.fillRect(x,y+s*0.4,s,s*0.2);
       }
       if(cell===T_PELLET){
-        ctx.fillStyle='#ffb8ae';
+        const q=((r<ROWS/2)?0:2)+((c<COLS/2)?0:1);
+        const hue=(RAINBOW[q]+globalTime*30)%360;
+        ctx.fillStyle=`hsla(${hue},90%,75%,1)`;
         ctx.beginPath();ctx.arc(cx2,cy2,s*0.07,0,Math.PI*2);ctx.fill();
       }
       if(cell===T_POWER){
+        const hue=(globalTime*120)%360;
         const p=0.7+0.3*Math.sin(Date.now()*0.005);
-        ctx.fillStyle=`rgba(255,184,174,${p})`;
+        ctx.fillStyle=`hsla(${hue},100%,65%,${p})`;
         ctx.beginPath();ctx.arc(cx2,cy2,s*0.15,0,Math.PI*2);ctx.fill();
       }
       if(cell===T_FRUIT&&fruit){
@@ -499,9 +533,15 @@ function drawHUD(){
   ctx.fillStyle='#fff';
   ctx.fillText(`LVL ${level}`,w*0.35,18);
   if(combo>1){
-    ctx.fillStyle='#ffff00';
-    ctx.font='bold 12px monospace';
-    ctx.fillText(`x${combo}`,w*0.35,37);
+    const comboText=`x${combo}`;
+    const cw=ctx.measureText(comboText).width;
+    const cwx=w*0.35-cw/2,cwy=37;
+    const segW=cw/comboText.length;
+    for(let i=0;i<comboText.length;i++){
+      const hue=(i*40+globalTime*80)%360;
+      ctx.fillStyle=`hsla(${hue},100%,60%,1)`;
+      ctx.fillText(comboText[i],cwx+i*segW+segW/2,cwy);
+    }
   }
 
   ctx.textAlign='right';
@@ -590,6 +630,26 @@ function drawGameOver(){
   ctx.globalAlpha=1;
 }
 
+/* screen tint */
+function drawScreenTint(){
+  if(state!=='playing') return;
+  const hue=(globalTime*20)%360;
+  ctx.globalAlpha=0.04;
+  ctx.fillStyle=`hsla(${hue},80%,50%,1)`;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalAlpha=1;
+}
+
+/* screen tint */
+function drawScreenTint(){
+  if(state!=='playing') return;
+  const hue=(globalTime*20)%360;
+  ctx.globalAlpha=0.04;
+  ctx.fillStyle=`hsla(${hue},80%,50%,1)`;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalAlpha=1;
+}
+
 /* overlays */
 function drawPaused(){
   ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -658,11 +718,13 @@ function drawMobile(){
 
 /* main update */
 function update(d){
+  globalTime+=d;
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
   }
+  updChromaticTrail(d);
 }
 
 /* main draw */
@@ -670,9 +732,11 @@ function draw(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
   drawMaze();
+  drawChromaticTrail();
   drawPM();
   for(const g of ghosts) drawGhost(g);
   drawHUD();drawMobile();
+  drawScreenTint();
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
   if(state==='levelComplete') drawLvlComplete();

@@ -2,4 +2,4 @@
 
 ## Authors
 
-- brycecovert — v0 (clean baseline)
+- brycecovert — v0 (clean baseline)- Bryce — v1
