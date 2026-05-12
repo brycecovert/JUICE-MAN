@@ -7,5 +7,14 @@
     "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/feature/shape-flash-bg-v1/levels/level_1_v1.html",
     "status": "generated",
     "updated_at": "2026-05-06T05:24:44.188Z"
+  },
+  {
+    "pr_number": 12,
+    "level": 1,
+    "version": 2,
+    "title": "PR #12 - Level 1 v2",
+    "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/juice-man-v2-prismatic-burst/levels/level_1_v2.html",
+    "status": "generated",
+    "updated_at": "2026-05-12T02:12:24.401Z"
   }
 ]
