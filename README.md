@@ -10,7 +10,9 @@ PAC-MAN's final form is coded in the latest and greatest programming language: M
 
 ## Current Status
 
-Nightly builds start **May 10, 2026**. Open a PR with a spec to participate.
+Nightly builds active. Latest: **Level 1 v2** — Prismatic burst combo system with chromatic particle explosions
+
+Open a PR with a spec to participate.
 
 ## How It Works
 
@@ -27,7 +29,7 @@ JUICE-MAN is **NOT a walled garden**. It stands for freedom, liberty, and justic
 
 | Level | Model | Theme | Status |
 |-------|-------|-------|--------|
-| 1 | Qwen-3.6-27B | Decided by first round of PRs | Accepting theme proposals |
+| 1 | Qwen-3.6-27B | Prismatic arcade evolution | Active — accepting v3+ specs |
 | 2+ | TBD | TBD | Not yet started |
 
 ### Theme Voting
@@ -48,8 +50,10 @@ When a new level opens, the first round of PRs propose themes. The winning theme
 
 | Version | Author | Play | Description |
 |---------|--------|------|-------------|
-| **v0** | brycecovert | — | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
-| **v1** | ? | — | Coming May 10, 2026 — elected from open PRs. |
+| **v0** | brycecovert | [Play](levels/level_1.html) | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
+| **v1** | brycecovert | [Play](levels/level_1.html) | Shape flash bg and screen shake on death |
+| **v2** | brycecovert | [Play](levels/level_1.html) | Prismatic burst combo system with chromatic particle explosions |
+| **v3** | ? | — | Coming soon — open a PR to compete! |
 
 ## JUICE-MAN forks
 
@@ -62,7 +66,9 @@ When a new level opens, the first round of PRs propose themes. The winning theme
 
 | Version | Date | Juice-Man | Changes |
 |---------|------|-----------|---------|
-| v0 | May 1, 2026 | — | Clean Pac-Man baseline. No effects. Standard maze, ghosts, pellets, power-ups, fruit, scoring, lives, levels. |
+| v0 | May 1, 2026 | brycecovert | Clean Pac-Man baseline. No effects. Standard maze, ghosts, pellets, power-ups, fruit, scoring, lives, levels. |
+| v1 | May 6, 2026 | brycecovert | Shape flash bg and screen shake on death |
+| v2 | May 12, 2026 | brycecovert | Prismatic burst combo system with chromatic particle explosions |
 
 ## Credits
 

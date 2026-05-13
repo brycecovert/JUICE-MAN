@@ -655,6 +655,120 @@ body {
   margin-top: 0.75rem;
 }
 
+/* PR Cards */
+.pr-section {
+  margin-top: 2.5rem;
+  width: 100%;
+}
+
+.pr-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 1rem;
+}
+
+.pr-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .pr-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pr-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: left;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+}
+
+.pr-card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-2px);
+}
+
+.pr-card-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.9);
+  margin-bottom: 0.35rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.pr-card-meta {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pr-card-votes {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(255,255,255,0.06);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.pr-card-preview {
+  font-size: 0.65rem;
+  color: var(--inspire-accent);
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+.pr-loading {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.4);
+  padding: 1rem;
+}
+
+.pr-error {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: rgba(255,100,100,0.7);
+  padding: 1rem;
+}
+
+.pr-empty {
+  font-family: var(--font-text);
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.5);
+  padding: 1rem;
+}
+
+.next-version-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #ff3366, #ff66aa);
+  color: #000;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: bold;
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.1em;
+}
+
 /* FOOTER */
 .footer {
   padding: 2rem 1rem;
@@ -852,6 +966,7 @@ body {
 <section class="section-future">
   <div class="future-content">
     <p class="future-eyebrow reveal">The Next Version</p>
+    <div class="next-version-badge reveal" id="nextVersionBadge">Loading next version...</div>
     <h2 class="future-title reveal">
       Your Juice<br>
       <span class="highlight">Could Be Next</span>
@@ -861,6 +976,13 @@ body {
       a short description of the juice you want to add. The community votes,
       the winning idea gets built, and you become part of the history.
     </p>
+
+    <div class="pr-section reveal" id="prSection">
+      <p class="pr-label">Open Pull Requests</p>
+      <div id="prList">
+        <div class="pr-loading">Loading open PRs...</div>
+      </div>
+    </div>
 
     <div class="future-steps reveal">
       <div class="future-step">
@@ -983,6 +1105,97 @@ document.addEventListener('keydown', (e) => {
     }
   }
 });
+
+// Fetch open PRs and next version info
+async function loadNextVersionInfo() {
+  const badge = document.getElementById('nextVersionBadge');
+  const prList = document.getElementById('prList');
+  
+  try {
+    // Fetch next version from specs
+    const nextVersionResponse = await fetch('specs/level_1/next_version');
+    let nextVersion = '?';
+    if (nextVersionResponse.ok) {
+      nextVersion = (await nextVersionResponse.text()).trim();
+    }
+    badge.textContent = `Next: Level 1 v${nextVersion}`;
+    
+    // Fetch previews manifest
+    let previews = [];
+    try {
+      const previewsResponse = await fetch('previews.json');
+      if (previewsResponse.ok) {
+        previews = await previewsResponse.json();
+      }
+    } catch (e) {
+      console.log('No previews manifest');
+    }
+    
+    // Fetch open PRs from GitHub API
+    const prsResponse = await fetch('https://api.github.com/repos/brycecovert/JUICE-MAN/pulls?state=open&per_page=20');
+    if (!prsResponse.ok) throw new Error('Failed to fetch PRs');
+    
+    const prs = await prsResponse.json();
+    
+    if (prs.length === 0) {
+      prList.innerHTML = '<div class="pr-empty">No open PRs right now. Be the first to submit a spec!</div>';
+      return;
+    }
+    
+    // Build PR cards
+    const grid = document.createElement('div');
+    grid.className = 'pr-grid';
+    
+    for (const pr of prs) {
+      // Find matching preview
+      const preview = previews.find(p => p.pr_number === pr.number);
+      
+      const card = document.createElement('a');
+      card.className = 'pr-card';
+      card.href = pr.html_url;
+      card.target = '_blank';
+      card.rel = 'noopener';
+      
+      const title = document.createElement('div');
+      title.className = 'pr-card-title';
+      title.textContent = pr.title;
+      
+      const meta = document.createElement('div');
+      meta.className = 'pr-card-meta';
+      
+      const author = document.createElement('span');
+      author.textContent = `@${pr.user.login}`;
+      
+      const votes = document.createElement('span');
+      votes.className = 'pr-card-votes';
+      votes.innerHTML = `⭐ ${pr.reactions && pr.reactions['+1'] || 0}`;
+      
+      meta.appendChild(author);
+      meta.appendChild(votes);
+      
+      if (preview) {
+        const previewLink = document.createElement('div');
+        previewLink.className = 'pr-card-preview';
+        previewLink.textContent = `▶ Preview available`;
+        meta.appendChild(previewLink);
+      }
+      
+      card.appendChild(title);
+      card.appendChild(meta);
+      grid.appendChild(card);
+    }
+    
+    prList.innerHTML = '';
+    prList.appendChild(grid);
+    
+  } catch (error) {
+    console.error('Error loading PRs:', error);
+    prList.innerHTML = '<div class="pr-error">Unable to load PRs. <a href="https://github.com/brycecovert/JUICE-MAN/pulls" target="_blank" rel="noopener" style="color:#8af">View on GitHub →</a></div>';
+    badge.textContent = 'Next: Level 1 v?';
+  }
+}
+
+loadNextVersionInfo();
 </script>
 </body>
 </html>
