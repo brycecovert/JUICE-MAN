@@ -896,24 +896,100 @@ body {
   color: rgba(255,255,255,0.35);
 }
 
-.version-game {
+.version-preview {
   position: relative;
   width: 100%;
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 100%);
+  overflow: hidden;
 }
 
-.version-game::before {
+.version-preview::before {
   content: '';
   display: block;
   padding-top: 75%;
 }
 
-.version-game iframe {
+.version-preview img {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  border: none;
+  object-fit: cover;
+  opacity: 0.9;
+}
+
+.version-preview-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.version-preview-placeholder .pacman-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--classic-yellow);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 50% 50%);
+}
+
+.version-preview-placeholder span {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+}
+
+.version-play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.version-card:hover .version-play-overlay {
+  opacity: 1;
+}
+
+.version-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(255,255,0,0.9);
+  color: #000;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 20px rgba(255,255,0,0.3);
+}
+
+.version-play-btn:hover {
+  transform: scale(1.05);
+  background: #ffff00;
+}
+
+.version-play-btn::before {
+  content: '▶';
+  font-size: 0.6rem;
 }
 
 .version-prs {
@@ -1272,7 +1348,7 @@ function getPRsForLevel(prs, level) {
   });
 }
 
-function createVersionCard(version, file, isLatest, prs, nextVersion) {
+function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
   const card = document.createElement('div');
   card.className = 'version-card' + (isLatest ? ' latest' : '');
 
@@ -1291,15 +1367,53 @@ function createVersionCard(version, file, isLatest, prs, nextVersion) {
   header.appendChild(status);
   card.appendChild(header);
 
-  const game = document.createElement('div');
-  game.className = 'version-game';
-  const iframe = document.createElement('iframe');
-  iframe.src = file;
-  iframe.title = `Level ${version}`;
-  iframe.loading = isLatest ? 'eager' : 'lazy';
-  iframe.setAttribute('tabindex', '0');
-  game.appendChild(iframe);
-  card.appendChild(game);
+  // Preview with screenshot or placeholder
+  const preview = document.createElement('div');
+  preview.className = 'version-preview';
+
+  // Try to load screenshot, fallback to placeholder
+  const screenshotPath = `screenshots/level_${level}/level_${level}_v${version}.png`;
+  const img = document.createElement('img');
+  img.alt = `Level ${level} v${version} screenshot`;
+  img.loading = isLatest ? 'eager' : 'lazy';
+
+  // Handle image load/error
+  img.onerror = () => {
+    img.style.display = 'none';
+    const placeholder = document.createElement('div');
+    placeholder.className = 'version-preview-placeholder';
+    placeholder.innerHTML = `
+      <div class="pacman-icon"></div>
+      <span>Level ${level} v${version}</span>
+    `;
+    preview.appendChild(placeholder);
+  };
+  img.onload = () => {
+    img.style.display = 'block';
+  };
+  img.src = screenshotPath;
+  preview.appendChild(img);
+
+  // Play overlay button
+  const overlay = document.createElement('div');
+  overlay.className = 'version-play-overlay';
+  const playBtn = document.createElement('a');
+  playBtn.className = 'version-play-btn';
+  playBtn.href = file;
+  playBtn.target = '_blank';
+  playBtn.textContent = 'Play';
+  overlay.appendChild(playBtn);
+  preview.appendChild(overlay);
+
+  // Also make the whole preview clickable on mobile (where hover doesn't work)
+  preview.style.cursor = 'pointer';
+  preview.addEventListener('click', (e) => {
+    if (e.target !== playBtn && !playBtn.contains(e.target)) {
+      window.open(file, '_blank');
+    }
+  });
+
+  card.appendChild(preview);
 
   if (isLatest && prs.length > 0) {
     const prSection = document.createElement('div');
@@ -1376,7 +1490,7 @@ function createLevelSection(levelData, versions, prs) {
   versions.forEach((v, i) => {
     const isLatest = i === 0;
     const levelPRs = isLatest ? getPRsForLevel(prs, levelData.level) : [];
-    const card = createVersionCard(v.version, v.file, isLatest, levelPRs, levelData.nextVersion);
+    const card = createVersionCard(v.version, v.file, isLatest, levelPRs, levelData.nextVersion, levelData.level);
     stack.appendChild(card);
   });
 
