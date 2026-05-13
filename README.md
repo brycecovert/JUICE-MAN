@@ -50,9 +50,9 @@ When a new level opens, the first round of PRs propose themes. The winning theme
 
 | Version | Author | Play | Description |
 |---------|--------|------|-------------|
-| **v0** | brycecovert | [Play](levels/level_1.html) | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
-| **v1** | brycecovert | [Play](levels/level_1.html) | Shape flash bg and screen shake on death |
-| **v2** | brycecovert | [Play](levels/level_1.html) | Prismatic burst combo system with chromatic particle explosions |
+| **v0** | brycecovert | [Play](levels/level_1_v0.html) | Clean baseline — standard Pac-Man with no visual effects. The starting point for all juice. |
+| **v1** | brycecovert | [Play](levels/level_1_v1.html) | Shape flash bg and screen shake on death |
+| **v2** | brycecovert | [Play](levels/level_1_v2.html) | Prismatic burst combo system with chromatic particle explosions |
 | **v3** | ? | — | Coming soon — open a PR to compete! |
 
 ## JUICE-MAN forks

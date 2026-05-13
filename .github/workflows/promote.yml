@@ -53,6 +53,13 @@ jobs:
           MERGED_FILE="${{ steps.detect.outputs.merged_file }}"
           CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
           
+          # Preserve v0 baseline on first promotion
+          V0_FILE="levels/level_${LEVEL}_v0.html"
+          if [ "$VERSION" = "1" ] && [ ! -f "$V0_FILE" ]; then
+            git show HEAD~1:"$CANONICAL_FILE" > "$V0_FILE" 2>/dev/null || cp "$CANONICAL_FILE" "$V0_FILE"
+            echo "Preserved v0 baseline: $V0_FILE"
+          fi
+          
           cp "$MERGED_FILE" "$CANONICAL_FILE"
           echo "Promoted $MERGED_FILE -> $CANONICAL_FILE"
 
@@ -120,7 +127,7 @@ jobs:
             const levelMatch = readme.match(levelTableRegex);
             
             if (levelMatch) {
-              const newRow = '| **v' + version + '** | ' + author + ' | [Play](levels/level_' + level + '.html) | ' + desc + ' |\n';
+              const newRow = '| **v' + version + '** | ' + author + ' | [Play](levels/level_' + level + '_v' + version + '.html) | ' + desc + ' |\n';
               readme = readme.slice(0, levelMatch.index + levelMatch[0].length) + newRow + readme.slice(levelMatch.index + levelMatch[0].length);
             }
             
@@ -152,8 +159,14 @@ jobs:
           CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
           NEXT_VERSION_FILE="${{ steps.detect.outputs.next_version_file }}"
           CREDITS_FILE="${{ steps.detect.outputs.credits_file }}"
+          V0_FILE="levels/level_${LEVEL}_v0.html"
           
           git add "$CANONICAL_FILE" "$NEXT_VERSION_FILE" "$CREDITS_FILE" README.md
+          
+          # Also add v0 file if it was just created
+          if [ -f "$V0_FILE" ]; then
+            git add "$V0_FILE"
+          fi
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
