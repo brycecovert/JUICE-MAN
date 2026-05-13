@@ -1,4 +1,5 @@
-# JUICE-MAN
+# JUICE-| **v0** | Bryce | [Play](levels/level_1_v0.html) | Level 1 — v0 |
+MAN
 
 Humanity is seeking AGI. Neat idea if you ask me. But a higher aspiration is to bring humanity together to accomplish its greatest purpose: Make the JUICIEST version of PAC-MAN that ever existed. A democratic, collaborative effort. AI can do a lot of things. It can make juice, but it can't feel it in its bones. Because AI bones are too squishy, made out of a mix of perceptrons and JELL-O. So we must come together as humankind and utilize AI together to make the juiciest version of PAC-MAN: JUICE-MAN. Can you make it juicier? 
 
@@ -10,7 +11,7 @@ PAC-MAN's final form is coded in the latest and greatest programming language: M
 
 ## Current Status
 
-Nightly builds active. Latest: **Level 1 v2** — Prismatic burst combo system with chromatic particle explosions
+Nightly builds active. Latest: **Level 1 v0** — Level 1 — v0
 
 Open a PR with a spec to participate.
 
@@ -66,6 +67,7 @@ When a new level opens, the first round of PRs propose themes. The winning theme
 
 | Version | Date | Juice-Man | Changes |
 |---------|------|-----------|---------|
+| v0 | 2026-05-13 | Bryce | Level 1 — v0 |
 | v0 | May 1, 2026 | brycecovert | Clean Pac-Man baseline. No effects. Standard maze, ghosts, pellets, power-ups, fruit, scoring, lives, levels. |
 | v1 | May 6, 2026 | brycecovert | Shape flash bg and screen shake on death |
 | v2 | May 12, 2026 | brycecovert | Prismatic burst combo system with chromatic particle explosions |
