@@ -909,14 +909,13 @@ body {
   padding-top: 75%;
 }
 
-.version-preview img {
+.version-preview video {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.9;
 }
 
 .version-preview-placeholder {
@@ -1367,19 +1366,32 @@ function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
   header.appendChild(status);
   card.appendChild(header);
 
-  // Preview with screenshot or placeholder
+  // Build htmlpreview play URL
+  const playUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/main/${file}`;
+
+  // Preview with animated webm or placeholder
   const preview = document.createElement('div');
   preview.className = 'version-preview';
 
-  // Try to load screenshot, fallback to placeholder
-  const screenshotPath = `screenshots/level_${level}/level_${level}_v${version}.png`;
-  const img = document.createElement('img');
-  img.alt = `Level ${level} v${version} screenshot`;
-  img.loading = isLatest ? 'eager' : 'lazy';
+  // Try to load webm video, fallback to placeholder
+  const videoPath = `screenshots/level_${level}/level_${level}_v${version}.webm`;
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.loop = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = isLatest ? 'auto' : 'none';
 
-  // Handle image load/error
-  img.onerror = () => {
-    img.style.display = 'none';
+  const source = document.createElement('source');
+  source.src = videoPath;
+  source.type = 'video/webm';
+  video.appendChild(source);
+
+  // Handle video load/error
+  let hasVideo = true;
+  video.onerror = () => {
+    hasVideo = false;
+    video.style.display = 'none';
     const placeholder = document.createElement('div');
     placeholder.className = 'version-preview-placeholder';
     placeholder.innerHTML = `
@@ -1388,18 +1400,15 @@ function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
     `;
     preview.appendChild(placeholder);
   };
-  img.onload = () => {
-    img.style.display = 'block';
-  };
-  img.src = screenshotPath;
-  preview.appendChild(img);
+
+  preview.appendChild(video);
 
   // Play overlay button
   const overlay = document.createElement('div');
   overlay.className = 'version-play-overlay';
   const playBtn = document.createElement('a');
   playBtn.className = 'version-play-btn';
-  playBtn.href = file;
+  playBtn.href = playUrl;
   playBtn.target = '_blank';
   playBtn.textContent = 'Play';
   overlay.appendChild(playBtn);
@@ -1409,7 +1418,7 @@ function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
   preview.style.cursor = 'pointer';
   preview.addEventListener('click', (e) => {
     if (e.target !== playBtn && !playBtn.contains(e.target)) {
-      window.open(file, '_blank');
+      window.open(playUrl, '_blank');
     }
   });
 
