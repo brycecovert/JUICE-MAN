@@ -769,6 +769,247 @@ body {
   letter-spacing: 0.1em;
 }
 
+/* EVOLUTION SECTION */
+.section-evolution {
+  background: linear-gradient(180deg, #000022 0%, #0a0a0f 100%);
+  padding: 3rem 1rem;
+  min-height: 100vh;
+}
+
+.evolution-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.evolution-eyebrow {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 0.5rem;
+}
+
+.evolution-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5vw, 2.5rem);
+  color: var(--classic-yellow);
+  text-shadow: 0 0 20px rgba(255,255,0,0.4);
+}
+
+.level-section {
+  margin-bottom: 4rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.level-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.level-number {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+  color: var(--classic-yellow);
+  text-shadow: 0 0 10px rgba(255,255,0,0.3);
+}
+
+.level-theme {
+  font-family: var(--font-text);
+  font-size: clamp(0.8rem, 2vw, 0.95rem);
+  color: rgba(255,255,255,0.5);
+  font-style: italic;
+}
+
+.level-next-badge {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  background: linear-gradient(135deg, #ff3366, #ff66aa);
+  color: #000;
+  padding: 0.2rem 0.5rem;
+  border-radius: 3px;
+  margin-left: auto;
+  letter-spacing: 0.05em;
+}
+
+.version-stack {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 1rem;
+  padding: 1rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.version-stack::-webkit-scrollbar {
+  display: none;
+}
+
+.version-card {
+  flex: 0 0 75%;
+  max-width: 560px;
+  scroll-snap-align: start;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.version-card.latest {
+  flex: 0 0 85%;
+  max-width: 640px;
+  border-color: rgba(255,255,0,0.3);
+  box-shadow: 0 0 0 1px rgba(255,255,0,0.1), 0 8px 40px rgba(0,0,0,0.5);
+}
+
+.version-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.version-badge {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.1em;
+}
+
+.version-badge.latest {
+  color: var(--classic-yellow);
+}
+
+.version-status {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.35);
+}
+
+.version-game {
+  position: relative;
+  width: 100%;
+}
+
+.version-game::before {
+  content: '';
+  display: block;
+  padding-top: 75%;
+}
+
+.version-game iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.version-prs {
+  padding: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.version-prs-label {
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 0.75rem;
+}
+
+.pr-mini-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pr-mini-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 0.6rem 0.75rem;
+  text-decoration: none;
+  display: block;
+  transition: all 0.2s ease;
+}
+
+.pr-mini-card:hover {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.15);
+}
+
+.pr-mini-title {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.pr-mini-meta {
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.4);
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.pr-mini-votes {
+  background: rgba(255,255,255,0.06);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.stack-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.stack-nav button {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.6);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.stack-nav button:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.loading-levels {
+  text-align: center;
+  padding: 3rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.4);
+}
+
 /* FOOTER */
 .footer {
   padding: 2rem 1rem;
@@ -788,7 +1029,7 @@ body {
 
 /* Larger screens */
 @media (min-width: 768px) {
-  .section-void, .section-dark-ages, .section-pacman, .section-v0, .section-inspiration, .section-future {
+  .section-void, .section-dark-ages, .section-pacman, .section-evolution, .section-future {
     padding: 3rem 2rem;
   }
 
@@ -890,88 +1131,19 @@ body {
   </div>
 </section>
 
-<section class="section-v0">
-  <div class="version-header">
-    <span class="version-number reveal">Level 1 — Version 0</span>
-    <h2 class="version-title reveal">The Clean Baseline</h2>
-    <p class="version-description reveal">
-      Where it all began. A pristine Pac-Man experience — pellets, ghosts, fruit,
-      combo system. No visual effects. No particles. Just pure arcade action.
-      This is the foundation upon which all future juice is built.
-    </p>
+<section class="section-evolution" id="evolutionSection">
+  <div class="evolution-header reveal">
+    <p class="evolution-eyebrow">The Evolution</p>
+    <h2 class="evolution-title">How Juicy It Gets</h2>
   </div>
-  <div class="version-screenshot reveal">
-    <div class="game-wrapper">
-      <iframe src="levels/level_1.html" title="JUICE-MAN v0" tabindex="0"></iframe>
-    </div>
-    <p class="keyboard-hint">Click inside to play with arrow keys</p>
-  </div>
-  <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap;justify-content:center;">
-    <a href="levels/level_1_v0.html" target="_blank" style="font-family:var(--font-display);font-size:0.65rem;color:var(--classic-yellow);text-decoration:none;border:1px solid rgba(255,255,0,0.3);padding:0.4rem 0.8rem;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,0,0.1)'" onmouseout="this.style.background='transparent'">Play v0</a>
-    <a href="levels/level_1_v1.html" target="_blank" style="font-family:var(--font-display);font-size:0.65rem;color:var(--classic-yellow);text-decoration:none;border:1px solid rgba(255,255,0,0.3);padding:0.4rem 0.8rem;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,0,0.1)'" onmouseout="this.style.background='transparent'">Play v1</a>
-    <a href="levels/level_1_v2.html" target="_blank" style="font-family:var(--font-display);font-size:0.65rem;color:var(--classic-yellow);text-decoration:none;border:1px solid rgba(255,255,0,0.3);padding:0.4rem 0.8rem;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,0,0.1)'" onmouseout="this.style.background='transparent'">Play v2 (latest)</a>
-  </div>
-</section>
-
-<section class="section-inspiration">
-  <div class="inspire-header reveal">
-    <p class="inspire-label">Inspired by</p>
-    <h2 class="inspire-title">What Juice Looks Like</h2>
-    <p class="inspire-subtitle">Some flavors from the community kitchen</p>
-  </div>
-
-  <div class="carousel reveal" id="inspireCarousel">
-    <div class="carousel-viewport">
-      <button class="carousel-arrow prev" onclick="moveCarousel(-1)" aria-label="Previous inspiration">&#8249;</button>
-      <div class="carousel-track" id="carouselTrack">
-
-        <div class="carousel-slide">
-          <span class="carousel-slide-label">Inspiration #1</span>
-          <h3 class="carousel-slide-title">Water Man</h3>
-          <p class="carousel-slide-desc">Surf the maze. Plankton, sharks, kelp, rising bubbles.</p>
-          <div class="carousel-game">
-            <iframe src="inspiration/juice_man_water.html" title="Water Man" tabindex="0"></iframe>
-          </div>
-        </div>
-
-        <div class="carousel-slide">
-          <span class="carousel-slide-label">Inspiration #2</span>
-          <h3 class="carousel-slide-title">Dragon Man</h3>
-          <p class="carousel-slide-desc">Become the dragon. Fire breath, reaper deaths, worldburner combos.</p>
-          <div class="carousel-game">
-            <iframe src="inspiration/juice_man_dragon.html" title="Dragon Man" tabindex="0"></iframe>
-          </div>
-        </div>
-
-        <div class="carousel-slide">
-          <span class="carousel-slide-label">Inspiration #3</span>
-          <h3 class="carousel-slide-title">Miser Man</h3>
-          <p class="carousel-slide-desc">Mr. Burns meets Pac-Man. Smoke, coins, and corporate despair.</p>
-          <div class="carousel-game">
-            <iframe src="inspiration/juice_man_miser.html" title="Miser Man" tabindex="0"></iframe>
-          </div>
-        </div>
-
-        <div class="carousel-slide">
-          <span class="carousel-slide-label">Inspiration #4</span>
-          <h3 class="carousel-slide-title">Juice Man</h3>
-          <p class="carousel-slide-desc">The original. Classic arcade glow with neon trails and particle bursts.</p>
-          <div class="carousel-game">
-            <iframe src="juice_man_inspiration.html" title="Juice Man" tabindex="0"></iframe>
-          </div>
-        </div>
-
-      </div>
-      <button class="carousel-arrow next" onclick="moveCarousel(1)" aria-label="Next inspiration">&#8250;</button>
-    </div>
-    <div class="carousel-nav" id="carouselNav"></div>
+  <div id="levelsContainer">
+    <div class="loading-levels">Discovering levels...</div>
   </div>
 </section>
 
 <section class="section-future">
   <div class="future-content">
-    <p class="future-eyebrow reveal">The Next Version</p>
-    <div class="next-version-badge reveal" id="nextVersionBadge">Loading next version...</div>
+    <p class="future-eyebrow reveal">Join The Competition</p>
     <h2 class="future-title reveal">
       Your Juice<br>
       <span class="highlight">Could Be Next</span>
@@ -982,13 +1154,6 @@ body {
       the winning idea gets built, and you become part of the history.
     </p>
 
-    <div class="pr-section reveal" id="prSection">
-      <p class="pr-label">Open Pull Requests</p>
-      <div id="prList">
-        <div class="pr-loading">Loading open PRs...</div>
-      </div>
-    </div>
-
     <div class="future-steps reveal">
       <div class="future-step">
         <span class="future-step-num">01</span>
@@ -996,7 +1161,7 @@ body {
       </div>
       <div class="future-step">
         <span class="future-step-num">02</span>
-        <span class="future-step-text"><strong>Submit a PR</strong> — <code>specs/level_1/v[N].md</code> with your vision</span>
+        <span class="future-step-text"><strong>Submit a PR</strong> — <code>specs/level_N/v[N].md</code> with your vision</span>
       </div>
       <div class="future-step">
         <span class="future-step-num">03</span>
@@ -1039,171 +1204,230 @@ const revealObserver = new IntersectionObserver((entries) => {
 
 document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
-// Carousel
-let currentSlide = 0;
-const totalSlides = 4;
+// Level and version discovery
+const REPO_OWNER = 'brycecovert';
+const REPO_NAME = 'JUICE-MAN';
 
-function initCarousel() {
-  const navContainer = document.getElementById('carouselNav');
-  for (let i = 0; i < totalSlides; i++) {
-    const dot = document.createElement('button');
-    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
-    dot.onclick = () => goToSlide(i);
-    dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
-    navContainer.appendChild(dot);
+async function discoverLevels() {
+  const levels = [];
+  for (let level = 1; level <= 20; level++) {
+    try {
+      const resp = await fetch(`specs/level_${level}/next_version`, { cache: 'no-store' });
+      if (resp.ok) {
+        const nextVersion = parseInt((await resp.text()).trim());
+        levels.push({ level, nextVersion, currentVersion: nextVersion - 1 });
+      } else {
+        break;
+      }
+    } catch (e) {
+      break;
+    }
+  }
+  return levels;
+}
+
+async function discoverVersions(level, currentVersion) {
+  const versions = [];
+  for (let v = currentVersion; v >= 0; v--) {
+    // Try versioned file first, then canonical as fallback
+    let file = `levels/level_${level}_v${v}.html`;
+    try {
+      const resp = await fetch(file, { method: 'HEAD', cache: 'no-store' });
+      if (!resp.ok && v === currentVersion) {
+        // Fallback to canonical for latest
+        file = `levels/level_${level}.html`;
+        const resp2 = await fetch(file, { method: 'HEAD', cache: 'no-store' });
+        if (!resp2.ok) continue;
+      } else if (!resp.ok) {
+        continue;
+      }
+    } catch (e) {
+      continue;
+    }
+    versions.push({ version: v, file });
+  }
+  return versions;
+}
+
+async function fetchOpenPRs() {
+  try {
+    const resp = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls?state=open&per_page=50`);
+    if (!resp.ok) return [];
+    return await resp.json();
+  } catch (e) {
+    console.error('Failed to fetch PRs:', e);
+    return [];
   }
 }
 
-function updateCarousel() {
-  const track = document.getElementById('carouselTrack');
-  track.style.transform = `translateX(-${currentSlide * 100}%)`;
-  document.querySelectorAll('.carousel-dot').forEach((dot, i) => {
-    dot.classList.toggle('active', i === currentSlide);
+function getPRsForLevel(prs, level) {
+  return prs.filter(pr => {
+    // Extract level from spec path in PR title or files
+    const specMatch = pr.title.match(/level[_\s]?([0-9]+)/i);
+    if (specMatch) return parseInt(specMatch[1]) === level;
+    // Also check branch name
+    const branchMatch = pr.head.ref.match(/level[_\s]?([0-9]+)/i);
+    if (branchMatch) return parseInt(branchMatch[1]) === level;
+    return false;
   });
 }
 
-function moveCarousel(direction) {
-  currentSlide = (currentSlide + direction + totalSlides) % totalSlides;
-  updateCarousel();
-}
+function createVersionCard(version, file, isLatest, prs, nextVersion) {
+  const card = document.createElement('div');
+  card.className = 'version-card' + (isLatest ? ' latest' : '');
 
-function goToSlide(index) {
-  currentSlide = index;
-  updateCarousel();
-}
+  const header = document.createElement('div');
+  header.className = 'version-card-header';
 
-initCarousel();
+  const badge = document.createElement('span');
+  badge.className = 'version-badge' + (isLatest ? ' latest' : '');
+  badge.textContent = `v${version}`;
 
-// Touch swipe support for carousel
-const carousel = document.getElementById('inspireCarousel');
-let touchStartX = 0;
-let touchEndX = 0;
+  const status = document.createElement('span');
+  status.className = 'version-status';
+  status.textContent = isLatest ? 'Current' : 'Archived';
 
-carousel.addEventListener('touchstart', (e) => {
-  touchStartX = e.changedTouches[0].screenX;
-}, { passive: true });
+  header.appendChild(badge);
+  header.appendChild(status);
+  card.appendChild(header);
 
-carousel.addEventListener('touchend', (e) => {
-  touchEndX = e.changedTouches[0].screenX;
-  handleSwipe();
-}, { passive: true });
+  const game = document.createElement('div');
+  game.className = 'version-game';
+  const iframe = document.createElement('iframe');
+  iframe.src = file;
+  iframe.title = `Level ${version}`;
+  iframe.loading = isLatest ? 'eager' : 'lazy';
+  iframe.setAttribute('tabindex', '0');
+  game.appendChild(iframe);
+  card.appendChild(game);
 
-function handleSwipe() {
-  const swipeThreshold = 50;
-  const diff = touchStartX - touchEndX;
-  if (Math.abs(diff) > swipeThreshold) {
-    if (diff > 0) {
-      moveCarousel(1);
-    } else {
-      moveCarousel(-1);
-    }
+  if (isLatest && prs.length > 0) {
+    const prSection = document.createElement('div');
+    prSection.className = 'version-prs';
+
+    const prLabel = document.createElement('div');
+    prLabel.className = 'version-prs-label';
+    prLabel.textContent = `Open PRs for v${nextVersion}`;
+    prSection.appendChild(prLabel);
+
+    const prGrid = document.createElement('div');
+    prGrid.className = 'pr-mini-grid';
+
+    prs.forEach(pr => {
+      const prCard = document.createElement('a');
+      prCard.className = 'pr-mini-card';
+      prCard.href = pr.html_url;
+      prCard.target = '_blank';
+      prCard.rel = 'noopener';
+
+      const prTitle = document.createElement('div');
+      prTitle.className = 'pr-mini-title';
+      prTitle.textContent = pr.title;
+
+      const prMeta = document.createElement('div');
+      prMeta.className = 'pr-mini-meta';
+      prMeta.innerHTML = `<span>@${pr.user.login}</span><span class="pr-mini-votes">⭐ ${pr.reactions?.['+1'] || 0}</span>`;
+
+      prCard.appendChild(prTitle);
+      prCard.appendChild(prMeta);
+      prGrid.appendChild(prCard);
+    });
+
+    prSection.appendChild(prGrid);
+    card.appendChild(prSection);
+  } else if (isLatest) {
+    const prSection = document.createElement('div');
+    prSection.className = 'version-prs';
+    prSection.innerHTML = `<div class="version-prs-label">Open PRs for v${nextVersion}</div><div style="font-family:var(--font-text);font-size:0.8rem;color:rgba(255,255,255,0.4);padding:0.5rem 0;">No open PRs. <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}/pulls" target="_blank" style="color:#8af;text-decoration:none;">Submit one →</a></div>`;
+    card.appendChild(prSection);
   }
+
+  return card;
 }
 
-// Keyboard support for carousel
-document.addEventListener('keydown', (e) => {
-  const carouselRect = carousel.getBoundingClientRect();
-  const isVisible = carouselRect.top < window.innerHeight && carouselRect.bottom > 0;
+function createLevelSection(levelData, versions, prs) {
+  const section = document.createElement('div');
+  section.className = 'level-section reveal';
+  section.dataset.level = levelData.level;
 
-  if (isVisible) {
-    if (e.key === 'ArrowLeft') {
-      moveCarousel(-1);
-    } else if (e.key === 'ArrowRight') {
-      moveCarousel(1);
-    }
+  const header = document.createElement('div');
+  header.className = 'level-header';
+
+  const levelNum = document.createElement('h3');
+  levelNum.className = 'level-number';
+  levelNum.textContent = `Level ${levelData.level}`;
+
+  const theme = document.createElement('span');
+  theme.className = 'level-theme';
+  theme.textContent = levelData.level === 1 ? 'Prismatic Arcade Evolution' : 'Theme TBD';
+
+  const nextBadge = document.createElement('span');
+  nextBadge.className = 'level-next-badge';
+  nextBadge.textContent = `Next: v${levelData.nextVersion}`;
+
+  header.appendChild(levelNum);
+  header.appendChild(theme);
+  header.appendChild(nextBadge);
+  section.appendChild(header);
+
+  const stack = document.createElement('div');
+  stack.className = 'version-stack';
+
+  versions.forEach((v, i) => {
+    const isLatest = i === 0;
+    const levelPRs = isLatest ? getPRsForLevel(prs, levelData.level) : [];
+    const card = createVersionCard(v.version, v.file, isLatest, levelPRs, levelData.nextVersion);
+    stack.appendChild(card);
+  });
+
+  section.appendChild(stack);
+
+  // Add navigation hint
+  if (versions.length > 1) {
+    const nav = document.createElement('div');
+    nav.className = 'stack-nav';
+    nav.innerHTML = `<button onclick="this.parentElement.previousElementSibling.scrollBy({left:-300,behavior:'smooth'})" aria-label="Scroll left">‹</button><button onclick="this.parentElement.previousElementSibling.scrollBy({left:300,behavior:'smooth'})" aria-label="Scroll right">›</button>`;
+    section.appendChild(nav);
   }
-});
 
-// Fetch open PRs and next version info
-async function loadNextVersionInfo() {
-  const badge = document.getElementById('nextVersionBadge');
-  const prList = document.getElementById('prList');
-  
+  return section;
+}
+
+async function renderEvolution() {
+  const container = document.getElementById('levelsContainer');
+  container.innerHTML = '<div class="loading-levels">Discovering levels...</div>';
+
   try {
-    // Fetch next version from specs
-    const nextVersionResponse = await fetch('specs/level_1/next_version');
-    let nextVersion = '?';
-    if (nextVersionResponse.ok) {
-      nextVersion = (await nextVersionResponse.text()).trim();
-    }
-    badge.textContent = `Next: Level 1 v${nextVersion}`;
-    
-    // Fetch previews manifest
-    let previews = [];
-    try {
-      const previewsResponse = await fetch('previews.json');
-      if (previewsResponse.ok) {
-        previews = await previewsResponse.json();
-      }
-    } catch (e) {
-      console.log('No previews manifest');
-    }
-    
-    // Fetch open PRs from GitHub API
-    const prsResponse = await fetch('https://api.github.com/repos/brycecovert/JUICE-MAN/pulls?state=open&per_page=20');
-    if (!prsResponse.ok) throw new Error('Failed to fetch PRs');
-    
-    const prs = await prsResponse.json();
-    
-    if (prs.length === 0) {
-      prList.innerHTML = '<div class="pr-empty">No open PRs right now. Be the first to submit a spec!</div>';
+    const [levels, allPRs] = await Promise.all([
+      discoverLevels(),
+      fetchOpenPRs()
+    ]);
+
+    if (levels.length === 0) {
+      container.innerHTML = '<div class="loading-levels">No levels found yet.</div>';
       return;
     }
-    
-    // Build PR cards
-    const grid = document.createElement('div');
-    grid.className = 'pr-grid';
-    
-    for (const pr of prs) {
-      // Find matching preview
-      const preview = previews.find(p => p.pr_number === pr.number);
-      
-      const card = document.createElement('a');
-      card.className = 'pr-card';
-      card.href = pr.html_url;
-      card.target = '_blank';
-      card.rel = 'noopener';
-      
-      const title = document.createElement('div');
-      title.className = 'pr-card-title';
-      title.textContent = pr.title;
-      
-      const meta = document.createElement('div');
-      meta.className = 'pr-card-meta';
-      
-      const author = document.createElement('span');
-      author.textContent = `@${pr.user.login}`;
-      
-      const votes = document.createElement('span');
-      votes.className = 'pr-card-votes';
-      votes.innerHTML = `⭐ ${pr.reactions && pr.reactions['+1'] || 0}`;
-      
-      meta.appendChild(author);
-      meta.appendChild(votes);
-      
-      if (preview) {
-        const previewLink = document.createElement('div');
-        previewLink.className = 'pr-card-preview';
-        previewLink.textContent = `▶ Preview available`;
-        meta.appendChild(previewLink);
+
+    container.innerHTML = '';
+
+    for (const level of levels) {
+      const versions = await discoverVersions(level.level, level.currentVersion);
+      if (versions.length > 0) {
+        const section = createLevelSection(level, versions, allPRs);
+        container.appendChild(section);
       }
-      
-      card.appendChild(title);
-      card.appendChild(meta);
-      grid.appendChild(card);
     }
-    
-    prList.innerHTML = '';
-    prList.appendChild(grid);
-    
+
+    // Re-observe new elements for scroll reveal
+    document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
   } catch (error) {
-    console.error('Error loading PRs:', error);
-    prList.innerHTML = '<div class="pr-error">Unable to load PRs. <a href="https://github.com/brycecovert/JUICE-MAN/pulls" target="_blank" rel="noopener" style="color:#8af">View on GitHub →</a></div>';
-    badge.textContent = 'Next: Level 1 v?';
+    console.error('Error rendering evolution:', error);
+    container.innerHTML = '<div class="loading-levels">Unable to load levels. <a href="https://github.com/' + REPO_OWNER + '/' + REPO_NAME + '" style="color:#8af">View on GitHub →</a></div>';
   }
 }
 
-loadNextVersionInfo();
+renderEvolution();
 </script>
 </body>
 </html>
