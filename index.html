@@ -870,6 +870,13 @@ body {
   box-shadow: 0 0 0 1px rgba(255,255,0,0.1), 0 8px 40px rgba(0,0,0,0.5);
 }
 
+.version-card.next {
+  flex: 0 0 85%;
+  max-width: 640px;
+  border-color: rgba(255,51,102,0.3);
+  box-shadow: 0 0 0 1px rgba(255,51,102,0.1), 0 8px 40px rgba(0,0,0,0.5);
+}
+
 .version-card-header {
   display: flex;
   justify-content: space-between;
@@ -1335,19 +1342,127 @@ async function fetchOpenPRs() {
   }
 }
 
-function getPRsForLevel(prs, level) {
+function getPRsForLevel(prs, level, nextVersion) {
+  // For now, show ALL open PRs since we only have Level 1 active
+  // In the future, this could check PR files to determine level
   return prs.filter(pr => {
-    // Extract level from spec path in PR title or files
-    const specMatch = pr.title.match(/level[_\s]?([0-9]+)/i);
-    if (specMatch) return parseInt(specMatch[1]) === level;
-    // Also check branch name
-    const branchMatch = pr.head.ref.match(/level[_\s]?([0-9]+)/i);
-    if (branchMatch) return parseInt(branchMatch[1]) === level;
-    return false;
+    const title = pr.title.toLowerCase();
+    const branch = pr.head.ref.toLowerCase();
+    const levelStr = level.toString();
+    
+    // Check if PR is for the next version
+    const hasVersion = title.includes(`v${nextVersion}`) || branch.includes(`v${nextVersion}`);
+    const hasLevel = title.includes(`level ${levelStr}`) || title.includes(`level_${levelStr}`) || 
+                     branch.includes(`level-${levelStr}`) || branch.includes(`level_${levelStr}`) ||
+                     branch.includes(`v${nextVersion}`);
+    
+    // Also include PRs that mention the version number
+    return hasVersion || hasLevel || title.includes('juice-man');
   });
 }
 
-function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
+function createNextVersionCard(level, nextVersion, prs) {
+  const card = document.createElement('div');
+  card.className = 'version-card next';
+
+  const header = document.createElement('div');
+  header.className = 'version-card-header';
+
+  const badge = document.createElement('span');
+  badge.className = 'version-badge next';
+  badge.textContent = `v${nextVersion}`;
+  badge.style.color = '#ff3366';
+
+  const status = document.createElement('span');
+  status.className = 'version-status';
+  status.textContent = 'Next';
+  status.style.color = '#ff66aa';
+
+  header.appendChild(badge);
+  header.appendChild(status);
+  card.appendChild(header);
+
+  // Preview placeholder for next version
+  const preview = document.createElement('div');
+  preview.className = 'version-preview';
+  preview.style.background = 'linear-gradient(135deg, #1a0a1a 0%, #2a0a1e 100%)';
+
+  const placeholder = document.createElement('div');
+  placeholder.className = 'version-preview-placeholder';
+  placeholder.innerHTML = `
+    <div class="pacman-icon" style="opacity:0.5;"></div>
+    <span style="color:rgba(255,255,255,0.5);">v${nextVersion} — Coming Soon</span>
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.3);margin-top:0.5rem;">${prs.length} competing PR${prs.length !== 1 ? 's' : ''}</span>
+  `;
+  preview.appendChild(placeholder);
+  card.appendChild(preview);
+
+  // PR list with preview buttons
+  if (prs.length > 0) {
+    const prSection = document.createElement('div');
+    prSection.className = 'version-prs';
+
+    const prLabel = document.createElement('div');
+    prLabel.className = 'version-prs-label';
+    prLabel.textContent = 'Competing Versions';
+    prLabel.style.color = '#ff66aa';
+    prSection.appendChild(prLabel);
+
+    const prGrid = document.createElement('div');
+    prGrid.className = 'pr-mini-grid';
+
+    prs.forEach(pr => {
+      const prRow = document.createElement('div');
+      prRow.style.display = 'flex';
+      prRow.style.flexDirection = 'column';
+      prRow.style.gap = '0.5rem';
+
+      const prCard = document.createElement('a');
+      prCard.className = 'pr-mini-card';
+      prCard.href = pr.html_url;
+      prCard.target = '_blank';
+      prCard.rel = 'noopener';
+
+      const prTitle = document.createElement('div');
+      prTitle.className = 'pr-mini-title';
+      prTitle.textContent = pr.title;
+
+      const prMeta = document.createElement('div');
+      prMeta.className = 'pr-mini-meta';
+      prMeta.innerHTML = `<span>@${pr.user.login}</span><span class="pr-mini-votes">⭐ ${pr.reactions?.['+1'] || 0}</span>`;
+
+      prCard.appendChild(prTitle);
+      prCard.appendChild(prMeta);
+      prRow.appendChild(prCard);
+
+      // Preview button linking to generated file on PR branch
+      const previewUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/levels/level_${level}_v${nextVersion}.html`;
+      const previewBtn = document.createElement('a');
+      previewBtn.href = previewUrl;
+      previewBtn.target = '_blank';
+      previewBtn.rel = 'noopener';
+      previewBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,51,102,0.15);border:1px solid rgba(255,51,102,0.3);color:#ff66aa;font-family:var(--font-display);font-size:0.65rem;text-decoration:none;border-radius:4px;transition:all 0.2s;width:fit-content;';
+      previewBtn.innerHTML = '▶ Preview this version';
+      previewBtn.onmouseenter = function() { this.style.background = 'rgba(255,51,102,0.25)'; };
+      previewBtn.onmouseleave = function() { this.style.background = 'rgba(255,51,102,0.15)'; };
+      prRow.appendChild(previewBtn);
+
+      prGrid.appendChild(prRow);
+    });
+
+    prSection.appendChild(prGrid);
+    card.appendChild(prSection);
+  } else {
+    const prSection = document.createElement('div');
+    prSection.className = 'version-prs';
+    prSection.innerHTML = `<div class="version-prs-label" style="color:#ff66aa;">Open PRs</div><div style="font-family:var(--font-text);font-size:0.8rem;color:rgba(255,255,255,0.4);padding:0.5rem 0;">No open PRs yet. <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}/pulls" target="_blank" style="color:#ff66aa;text-decoration:none;">Submit one →</a></div>`;
+    card.appendChild(prSection);
+  }
+
+  return card;
+}
+
+function createVersionCard(version, file, isLatest, level) {
   const card = document.createElement('div');
   card.className = 'version-card' + (isLatest ? ' latest' : '');
 
@@ -1388,9 +1503,7 @@ function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
   video.appendChild(source);
 
   // Handle video load/error
-  let hasVideo = true;
   video.onerror = () => {
-    hasVideo = false;
     video.style.display = 'none';
     const placeholder = document.createElement('div');
     placeholder.className = 'version-preview-placeholder';
@@ -1424,47 +1537,6 @@ function createVersionCard(version, file, isLatest, prs, nextVersion, level) {
 
   card.appendChild(preview);
 
-  if (isLatest && prs.length > 0) {
-    const prSection = document.createElement('div');
-    prSection.className = 'version-prs';
-
-    const prLabel = document.createElement('div');
-    prLabel.className = 'version-prs-label';
-    prLabel.textContent = `Open PRs for v${nextVersion}`;
-    prSection.appendChild(prLabel);
-
-    const prGrid = document.createElement('div');
-    prGrid.className = 'pr-mini-grid';
-
-    prs.forEach(pr => {
-      const prCard = document.createElement('a');
-      prCard.className = 'pr-mini-card';
-      prCard.href = pr.html_url;
-      prCard.target = '_blank';
-      prCard.rel = 'noopener';
-
-      const prTitle = document.createElement('div');
-      prTitle.className = 'pr-mini-title';
-      prTitle.textContent = pr.title;
-
-      const prMeta = document.createElement('div');
-      prMeta.className = 'pr-mini-meta';
-      prMeta.innerHTML = `<span>@${pr.user.login}</span><span class="pr-mini-votes">⭐ ${pr.reactions?.['+1'] || 0}</span>`;
-
-      prCard.appendChild(prTitle);
-      prCard.appendChild(prMeta);
-      prGrid.appendChild(prCard);
-    });
-
-    prSection.appendChild(prGrid);
-    card.appendChild(prSection);
-  } else if (isLatest) {
-    const prSection = document.createElement('div');
-    prSection.className = 'version-prs';
-    prSection.innerHTML = `<div class="version-prs-label">Open PRs for v${nextVersion}</div><div style="font-family:var(--font-text);font-size:0.8rem;color:rgba(255,255,255,0.4);padding:0.5rem 0;">No open PRs. <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}/pulls" target="_blank" style="color:#8af;text-decoration:none;">Submit one →</a></div>`;
-    card.appendChild(prSection);
-  }
-
   return card;
 }
 
@@ -1496,17 +1568,24 @@ function createLevelSection(levelData, versions, prs) {
   const stack = document.createElement('div');
   stack.className = 'version-stack';
 
+  // Get PRs for this level's next version
+  const levelPRs = getPRsForLevel(prs, levelData.level, levelData.nextVersion);
+
+  // 1. Next version card (first, leftmost)
+  const nextCard = createNextVersionCard(levelData.level, levelData.nextVersion, levelPRs);
+  stack.appendChild(nextCard);
+
+  // 2. Committed versions (current and older)
   versions.forEach((v, i) => {
     const isLatest = i === 0;
-    const levelPRs = isLatest ? getPRsForLevel(prs, levelData.level) : [];
-    const card = createVersionCard(v.version, v.file, isLatest, levelPRs, levelData.nextVersion, levelData.level);
+    const card = createVersionCard(v.version, v.file, isLatest, levelData.level);
     stack.appendChild(card);
   });
 
   section.appendChild(stack);
 
   // Add navigation hint
-  if (versions.length > 1) {
+  if (versions.length > 0) {
     const nav = document.createElement('div');
     nav.className = 'stack-nav';
     nav.innerHTML = `<button onclick="this.parentElement.previousElementSibling.scrollBy({left:-300,behavior:'smooth'})" aria-label="Scroll left">‹</button><button onclick="this.parentElement.previousElementSibling.scrollBy({left:300,behavior:'smooth'})" aria-label="Scroll right">›</button>`;
