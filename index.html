@@ -1382,10 +1382,19 @@ function createNextVersionCard(level, nextVersion, prs) {
   header.appendChild(status);
   card.appendChild(header);
 
-  // Preview placeholder for next version
+  // Video preview area (shared, changes when eye is clicked)
   const preview = document.createElement('div');
   preview.className = 'version-preview';
   preview.style.background = 'linear-gradient(135deg, #1a0a1a 0%, #2a0a1e 100%)';
+
+  const video = document.createElement('video');
+  video.autoplay = true;
+  video.loop = true;
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.display = 'none';
+  preview.appendChild(video);
 
   const placeholder = document.createElement('div');
   placeholder.className = 'version-preview-placeholder';
@@ -1397,7 +1406,7 @@ function createNextVersionCard(level, nextVersion, prs) {
   preview.appendChild(placeholder);
   card.appendChild(preview);
 
-  // PR list with preview buttons
+  // PR list with eye + play buttons
   if (prs.length > 0) {
     const prSection = document.createElement('div');
     prSection.className = 'version-prs';
@@ -1435,18 +1444,37 @@ function createNextVersionCard(level, nextVersion, prs) {
       prCard.appendChild(prMeta);
       prRow.appendChild(prCard);
 
-      // Preview button linking to generated file on PR branch
-      const previewUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/levels/level_${level}_v${nextVersion}.html`;
-      const previewBtn = document.createElement('a');
-      previewBtn.href = previewUrl;
-      previewBtn.target = '_blank';
-      previewBtn.rel = 'noopener';
-      previewBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,51,102,0.15);border:1px solid rgba(255,51,102,0.3);color:#ff66aa;font-family:var(--font-display);font-size:0.65rem;text-decoration:none;border-radius:4px;transition:all 0.2s;width:fit-content;';
-      previewBtn.innerHTML = '▶ Preview this version';
-      previewBtn.onmouseenter = function() { this.style.background = 'rgba(255,51,102,0.25)'; };
-      previewBtn.onmouseleave = function() { this.style.background = 'rgba(255,51,102,0.15)'; };
-      prRow.appendChild(previewBtn);
+      const btnRow = document.createElement('div');
+      btnRow.style.display = 'flex';
+      btnRow.style.gap = '0.5rem';
 
+      // Eye button — swaps video src to this PR's webm
+      const eyeBtn = document.createElement('button');
+      eyeBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-family:var(--font-display);font-size:0.65rem;cursor:pointer;border-radius:4px;transition:all 0.2s;';
+      eyeBtn.innerHTML = '👁 Preview';
+      eyeBtn.onmouseenter = function() { this.style.background = 'rgba(255,255,255,0.1)'; this.style.borderColor = 'rgba(255,255,255,0.25)'; };
+      eyeBtn.onmouseleave = function() { this.style.background = 'rgba(255,255,255,0.05)'; this.style.borderColor = 'rgba(255,255,255,0.15)'; };
+      eyeBtn.onclick = () => {
+        placeholder.style.display = 'none';
+        video.style.display = 'block';
+        video.src = `https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/screenshots/level_${level}/level_${level}_v${nextVersion}.webm?raw=true`;
+        video.play();
+      };
+      btnRow.appendChild(eyeBtn);
+
+      // Play button — opens game in htmlpreview
+      const playUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/levels/level_${level}_v${nextVersion}.html`;
+      const playBtn = document.createElement('a');
+      playBtn.href = playUrl;
+      playBtn.target = '_blank';
+      playBtn.rel = 'noopener';
+      playBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,51,102,0.15);border:1px solid rgba(255,51,102,0.3);color:#ff66aa;font-family:var(--font-display);font-size:0.65rem;text-decoration:none;border-radius:4px;transition:all 0.2s;';
+      playBtn.innerHTML = '▶ Play';
+      playBtn.onmouseenter = function() { this.style.background = 'rgba(255,51,102,0.25)'; };
+      playBtn.onmouseleave = function() { this.style.background = 'rgba(255,51,102,0.15)'; };
+      btnRow.appendChild(playBtn);
+
+      prRow.appendChild(btnRow);
       prGrid.appendChild(prRow);
     });
 
