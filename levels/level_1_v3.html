@@ -31,7 +31,7 @@ const BASE_SPEED=3.45,SPEED_INC=0.15;
 const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
-const HUD_H=52;
+const HUD_H=52;const MAX_COLLAPSE_PARTS=500;
 
 /* symmetrical maze (21x21) */
 const MAZE=[
@@ -67,7 +67,7 @@ let maze=[],pelletCount=0,totalPellets=0;
 let pm=null,ghosts=[];
 let fruit=null,fruitTime=0,fruitSpawned=false;
 let lastT=0,dt=0;
-let ts=0,ox=0,oy=0;
+let ts=0,ox=0,oy=0;let collapseParts=[],collapseActive=false,collapseStartTime=0;let rebuildActive=false,rebuildProgress=0,rebuildStartTime=0,rebuildRowLimit=-1;let ghostsFrozen=false,ghostFadeAlpha=1;let shakeTime=0,shakeIntensity=0,shakeOX=0,shakeOY=0;let globalTime=0;
 
 /* resize */
 function resize(){
@@ -231,6 +231,7 @@ function chooseDir(g){
   return best||{x:0,y:0};
 }
 function updGhost(g,d){
+  if(ghostsFrozen) return;
   if(g.inHouse){
     g.hTimer-=d*1000;
     g.y=g.hY+Math.sin(Date.now()*0.004+g.idx*1.5)*0.12;
@@ -298,7 +299,7 @@ function lifeLost(){
     if(score>highScore){highScore=score;localStorage.setItem('pacman_hi',highScore);}
   }else{
     state='lifeLost';
-    setTimeout(()=>{resetPos();state='playing';},1500);
+    startMazeCollapse();
   }
 }
 function resetPos(){
@@ -392,13 +393,72 @@ function startGame(){
 function nextLevel(){
   window.location.href='level_2.html';
 }
+function startMazeCollapse(){
+  collapseParts=[];collapseActive=true;
+  collapseStartTime=Date.now();
+  ghostsFrozen=true;ghostFadeAlpha=1;
+  shakeTime=200;shakeIntensity=12;
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      if(maze[r][c]===T_WALL&&collapseParts.length<MAX_COLLAPSE_PARTS){
+        const av=(Math.random()-0.5)*Math.PI;
+        collapseParts.push({
+          x:tx(c)+ts/2,y:ty(r)+ts/2,
+          px:tx(c)+ts/2,py:ty(r)+ts/2,
+          vx:av*10+(Math.random()-0.5)*20,
+          vy:-40-Math.random()*60,
+          angle:0,angularVel:av,
+          delay:Math.random()*400,
+          alpha:1
+        });
+      }
+    }
+  }
+}
+function updCollapse(d){
+  if(!collapseActive) return;
+  const elapsed=Date.now()-collapseStartTime;
+  let allDone=true;
+  for(const p of collapseParts){
+    if(elapsed<p.delay){allDone=false;continue;}
+    const ft=(elapsed-p.delay)/1000;
+    p.px=p.x;p.py=p.y;
+    p.vy+=600*d;
+    p.x+=p.vx*d;
+    p.y+=p.vy*d;
+    p.angle+=p.angularVel*d+Math.sin(globalTime*3+p.x*0.01)*0.5*d;
+    p.alpha=Math.max(0,1-ft*0.35);
+    if(p.y<canvas.height+ts*2) allDone=false;
+  }
+  if(ghostsFrozen) ghostFadeAlpha=Math.max(0,1-elapsed/800);
+  if(allDone&&collapseParts.length>0){
+    collapseActive=false;
+    startMazeRebuild();
+  }
+}
+function startMazeRebuild(){
+  rebuildActive=true;rebuildProgress=0;
+  rebuildStartTime=Date.now();
+}
+function updRebuild(d){
+  if(!rebuildActive) return;
+  rebuildProgress=Math.min(1,(Date.now()-rebuildStartTime)/500);
+  rebuildRowLimit=Math.floor(rebuildProgress*ROWS);
+  if(rebuildProgress>=1){
+    rebuildActive=false;rebuildRowLimit=ROWS;
+    ghostsFrozen=false;ghostFadeAlpha=1;
+    resetPos();state='playing';
+  }
+}
 
 /* drawing */
 function drawMaze(){
   for(let r=0;r<ROWS;r++){
+    const skipWalls=collapseActive||(rebuildActive&&r>rebuildRowLimit);
     for(let c=0;c<COLS;c++){
       const cell=maze[r][c],x=tx(c),y=ty(r),cx2=x+ts/2,cy2=y+ts/2,s=ts;
       if(cell===T_WALL){
+        if(skipWalls) continue;
         ctx.fillStyle='#1a1aff';
         ctx.fillRect(x,y,s,s);
         ctx.fillStyle='#000';
@@ -440,6 +500,7 @@ function drawPM(){
   ctx.beginPath();ctx.arc(ex,ey,r*0.08,0,Math.PI*2);ctx.fill();
 }
 function drawGhost(g){
+  if(ghostFadeAlpha<1) ctx.globalAlpha=ghostFadeAlpha;
   let cx,cy;
   if(g.inHouse){cx=tx(g.x)+ts/2;cy=ty(g.y)+ts/2;}
   else{cx=tx(g.x)+ts/2;cy=ty(g.y)+ts/2;}
@@ -468,6 +529,7 @@ function drawGhost(g){
     for(let i=0;i<5;i++) ctx.lineTo(cx-r*0.35+r*0.175*i,cy+r*0.12+(i%2?-r*0.07:0));
     ctx.stroke();
   }else drawGEyes(cx,cy,g);
+  ctx.globalAlpha=1;
 }
 function drawGEyes(cx,cy,g){
   const r=ts*0.42,dx=g.dir.x,dy=g.dir.y;
@@ -478,6 +540,27 @@ function drawGEyes(cx,cy,g){
     ctx.fillStyle='#1122aa';ctx.beginPath();
     ctx.arc(ex+dx*1.5,ey+dy*1.5,r*0.09,0,Math.PI*2);ctx.fill();
   }
+}
+function drawCollapseParts(){
+  for(const p of collapseParts){
+    const elapsed=Date.now()-collapseStartTime;
+    if(elapsed<p.delay) continue;
+    const ft=(elapsed-p.delay)/1000;
+    const hue=(240+ft*120)%360;
+    ctx.globalAlpha=p.alpha*0.25;
+    ctx.fillStyle=`hsla(${hue},90%,55%,${p.alpha*0.25})`;
+    ctx.fillRect(p.px-ts/2,p.py-ts/2,ts,ts);
+    ctx.globalAlpha=p.alpha;
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(p.angle);
+    ctx.fillStyle=`hsla(${hue},90%,55%,${p.alpha})`;
+    ctx.fillRect(-ts/2,-ts/2,ts,ts);
+    ctx.fillStyle='#000';
+    ctx.fillRect(-ts/2+2,-ts/2+2,ts-4,ts-4);
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
 }
 
 /* HUD */
@@ -658,10 +741,20 @@ function drawMobile(){
 
 /* main update */
 function update(d){
+  globalTime+=d;
+  if(shakeTime>0){
+    shakeOX=(Math.random()-0.5)*shakeIntensity*(shakeTime/200);
+    shakeOY=(Math.random()-0.5)*shakeIntensity*(shakeTime/200);
+    shakeTime-=d*1000;
+    if(shakeTime<0){shakeTime=0;shakeOX=0;shakeOY=0;}
+  }
   if(state==='playing'){
     updPM(d);
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
+  }
+  if(state==='lifeLost'){
+    updCollapse(d);updRebuild(d);
   }
 }
 
@@ -669,9 +762,13 @@ function update(d){
 function draw(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
+  ctx.save();
+  ctx.translate(shakeOX,shakeOY);
   drawMaze();
   drawPM();
   for(const g of ghosts) drawGhost(g);
+  drawCollapseParts();
+  ctx.restore();
   drawHUD();drawMobile();
   if(state==='paused') drawPaused();
   if(state==='lifeLost') drawLifeLost();
