@@ -1581,7 +1581,7 @@ function createLevelSection(levelData, versions, allPreviews) {
   stack.className = 'version-stack';
 
   // Get previews for this level's next version
-  const levelPreviews = getPreviewsForLevel(previews, levelData.level, levelData.nextVersion);
+  const levelPreviews = getPreviewsForLevel(allPreviews, levelData.level, levelData.nextVersion);
 
   // 1. Next version card (first, leftmost)
   const nextCard = createNextVersionCard(levelData.level, levelData.nextVersion, levelPreviews);
