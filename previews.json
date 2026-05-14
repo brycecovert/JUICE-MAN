@@ -4,8 +4,11 @@
     "level": 1,
     "version": 1,
     "title": "PR #9 - Level 1 v1",
-    "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v1.html",
     "status": "generated",
+    "game_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v1.html",
+    "screenshot_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v1.png",
+    "video_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v1.webm",
+    "pr_url": "https://github.com/brycecovert/JUICE-MAN/pull/9",
     "updated_at": "2026-05-06T05:24:44.188Z"
   },
   {
@@ -13,8 +16,11 @@
     "level": 1,
     "version": 2,
     "title": "PR #12 - Level 1 v2",
-    "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v2.html",
     "status": "generated",
+    "game_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v2.html",
+    "screenshot_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v2.png",
+    "video_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v2.webm",
+    "pr_url": "https://github.com/brycecovert/JUICE-MAN/pull/12",
     "updated_at": "2026-05-12T02:12:24.401Z"
   },
   {
@@ -22,8 +28,20 @@
     "level": 1,
     "version": 3,
     "title": "PR #14 - Level 1 v3",
-    "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v3.html",
     "status": "generated",
+    "game_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v3.html",
+    "screenshot_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v3.png",
+    "video_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v3.webm",
+    "pr_url": "https://github.com/brycecovert/JUICE-MAN/pull/14",
     "updated_at": "2026-05-13T06:13:24.240Z"
+  },
+  {
+    "pr_number": 17,
+    "level": 1,
+    "version": 4,
+    "title": "PR #17 - Level 1 v4",
+    "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v4_pr17.html",
+    "status": "generated",
+    "updated_at": "2026-05-14T22:10:12.701Z"
   }
 ]

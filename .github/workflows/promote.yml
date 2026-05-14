@@ -21,21 +21,20 @@ jobs:
           fetch-depth: 2
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Detect merged version
+      - name: Detect merged spec
         id: detect
         run: |
-          # Check if this push merged a versioned file
-          # Look for levels/level_N_vN.html in the latest commit
-          MERGED_FILE=$(git diff --name-only HEAD~1 HEAD | grep -E '^levels/level_[0-9]+_v[0-9]+\.html$' | head -n 1)
+          # Check if this push merged a spec file
+          MERGED_SPEC=$(git diff --name-only HEAD~1 HEAD | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
           
-          if [ -z "$MERGED_FILE" ]; then
-            echo "No versioned file detected in this push. Skipping promotion."
+          if [ -z "$MERGED_SPEC" ]; then
+            echo "No spec file detected in this push. Skipping promotion."
             echo "has_version=false" >> $GITHUB_OUTPUT
             exit 0
           fi
           
-          LEVEL=$(echo "$MERGED_FILE" | sed -E 's|levels/level_([0-9]+)_v[0-9]+\.html|\1|')
-          VERSION=$(echo "$MERGED_FILE" | sed -E 's|levels/level_[0-9]+_v([0-9]+)\.html|\1|')
+          LEVEL=$(echo "$MERGED_SPEC" | sed -E 's|specs/level_([0-9]+)/v[0-9]+\.md|\1|')
+          VERSION=$(echo "$MERGED_SPEC" | sed -E 's|specs/level_[0-9]+/v([0-9]+)\.md|\1|')
           NEXT_VERSION_FILE="specs/level_${LEVEL}/next_version"
           
           # Validate: only promote if version matches expected next version
@@ -48,26 +47,43 @@ jobs:
             fi
           fi
           
-          echo "Detected merged file: $MERGED_FILE"
+          echo "Detected merged spec: $MERGED_SPEC"
+          
+          # Find the PR that added this spec (look for _pr files)
+          PR_FILE=$(ls -1 levels/level_${LEVEL}_v${VERSION}_pr*.html 2>/dev/null | head -n 1)
+          if [ -z "$PR_FILE" ]; then
+            echo "ERROR: No PR preview file found for level ${LEVEL} v${VERSION}"
+            echo "has_version=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          PR_NUMBER=$(echo "$PR_FILE" | sed -E 's|levels/level_[0-9]+_v[0-9]+_pr([0-9]+)\.html|\1|')
+          echo "Found PR preview: $PR_FILE (PR #${PR_NUMBER})"
           
           CANONICAL_FILE="levels/level_${LEVEL}.html"
+          VERSIONED_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           CREDITS_FILE="credits/level_${LEVEL}_credits.md"
           
           echo "level=$LEVEL" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "merged_file=$MERGED_FILE" >> $GITHUB_OUTPUT
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "merged_spec=$MERGED_SPEC" >> $GITHUB_OUTPUT
+          echo "pr_file=$PR_FILE" >> $GITHUB_OUTPUT
           echo "canonical_file=$CANONICAL_FILE" >> $GITHUB_OUTPUT
+          echo "versioned_file=$VERSIONED_FILE" >> $GITHUB_OUTPUT
           echo "next_version_file=$NEXT_VERSION_FILE" >> $GITHUB_OUTPUT
           echo "credits_file=$CREDITS_FILE" >> $GITHUB_OUTPUT
           echo "has_version=true" >> $GITHUB_OUTPUT
 
-      - name: Promote to canonical path
+      - name: Promote to canonical and versioned paths
         if: steps.detect.outputs.has_version == 'true'
         run: |
           LEVEL="${{ steps.detect.outputs.level }}"
           VERSION="${{ steps.detect.outputs.version }}"
-          MERGED_FILE="${{ steps.detect.outputs.merged_file }}"
+          PR_NUMBER="${{ steps.detect.outputs.pr_number }}"
+          PR_FILE="${{ steps.detect.outputs.pr_file }}"
           CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
+          VERSIONED_FILE="${{ steps.detect.outputs.versioned_file }}"
           
           # Preserve v0 baseline on first promotion
           V0_FILE="levels/level_${LEVEL}_v0.html"
@@ -76,8 +92,26 @@ jobs:
             echo "Preserved v0 baseline: $V0_FILE"
           fi
           
-          cp "$MERGED_FILE" "$CANONICAL_FILE"
-          echo "Promoted $MERGED_FILE -> $CANONICAL_FILE"
+          # Copy PR file to canonical and versioned paths
+          cp "$PR_FILE" "$CANONICAL_FILE"
+          cp "$PR_FILE" "$VERSIONED_FILE"
+          echo "Promoted $PR_FILE -> $CANONICAL_FILE"
+          echo "Promoted $PR_FILE -> $VERSIONED_FILE"
+          
+          # Also copy screenshot and video to canonical names
+          PR_SCREENSHOT="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png"
+          VERSIONED_SCREENSHOT="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}.png"
+          if [ -f "$PR_SCREENSHOT" ]; then
+            cp "$PR_SCREENSHOT" "$VERSIONED_SCREENSHOT"
+            echo "Promoted screenshot: $PR_SCREENSHOT -> $VERSIONED_SCREENSHOT"
+          fi
+          
+          PR_VIDEO="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm"
+          VERSIONED_VIDEO="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}.webm"
+          if [ -f "$PR_VIDEO" ]; then
+            cp "$PR_VIDEO" "$VERSIONED_VIDEO"
+            echo "Promoted video: $PR_VIDEO -> $VERSIONED_VIDEO"
+          fi
 
       - name: Increment next_version
         if: steps.detect.outputs.has_version == 'true'
@@ -96,8 +130,6 @@ jobs:
           VERSION="${{ steps.detect.outputs.version }}"
           
           # Get the PR author from the merge commit
-          # The merge commit message typically contains the PR number
-          # We'll use the commit author as a fallback
           AUTHOR=$(git log -1 --format='%an' HEAD)
           
           # Try to get PR author from the merge commit if available
@@ -139,7 +171,7 @@ jobs:
             const desc = '${SPEC_DESC}';
             
             // Update Official Releases table for Level 1
-            const levelTableRegex = new RegExp('(### Level ' + level + '\\s*\\n\\s*\\n\\| Version \\| Author \\| Play \\| Description \\|\\s*\\n\\|[-|\\s]+\\|\\s*\\n)');
+            const levelTableRegex = new RegExp('(### Level ' + level + '\s*\n\s*\n| Version \| Author \| Play \| Description \|\s*\n|[-|\s]+\|\s*\n)');
             const levelMatch = readme.match(levelTableRegex);
             
             if (levelMatch) {
@@ -148,7 +180,7 @@ jobs:
             }
             
             // Update Release Log
-            const logMatch = readme.match(/(## Release Log\s*\n\s*\n\| Version \| Date \| Juice-Man \| Changes \|\s*\n\|[-|\s]+\|\s*\n)/);
+            const logMatch = readme.match(/(## Release Log\s*\n\s*\n| Version \| Date \| Juice-Man \| Changes \|\s*\n|[-|\s]+\|\s*\n)/);
             if (logMatch) {
               const newLogRow = '| v' + version + ' | ' + date + ' | ' + author + ' | ' + desc + ' |\n';
               readme = readme.slice(0, logMatch.index + logMatch[0].length) + newLogRow + readme.slice(logMatch.index + logMatch[0].length);
@@ -173,15 +205,26 @@ jobs:
           LEVEL="${{ steps.detect.outputs.level }}"
           VERSION="${{ steps.detect.outputs.version }}"
           CANONICAL_FILE="${{ steps.detect.outputs.canonical_file }}"
+          VERSIONED_FILE="${{ steps.detect.outputs.versioned_file }}"
           NEXT_VERSION_FILE="${{ steps.detect.outputs.next_version_file }}"
           CREDITS_FILE="${{ steps.detect.outputs.credits_file }}"
           V0_FILE="levels/level_${LEVEL}_v0.html"
+          VERSIONED_SCREENSHOT="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}.png"
+          VERSIONED_VIDEO="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}.webm"
           
-          git add "$CANONICAL_FILE" "$NEXT_VERSION_FILE" "$CREDITS_FILE" README.md
+          git add "$CANONICAL_FILE" "$VERSIONED_FILE" "$NEXT_VERSION_FILE" "$CREDITS_FILE" README.md
           
           # Also add v0 file if it was just created
           if [ -f "$V0_FILE" ]; then
             git add "$V0_FILE"
+          fi
+          
+          # Add promoted screenshot and video if they exist
+          if [ -f "$VERSIONED_SCREENSHOT" ]; then
+            git add "$VERSIONED_SCREENSHOT"
+          fi
+          if [ -f "$VERSIONED_VIDEO" ]; then
+            git add "$VERSIONED_VIDEO"
           fi
           
           if git diff --cached --quiet; then
