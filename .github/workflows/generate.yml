@@ -9,12 +9,18 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  pages: write
-  id-token: write
 
 jobs:
-  validate-and-generate:
+  # ============================================================================
+  # JOB 1: Validate the spec file
+  # ============================================================================
+  validate:
     runs-on: ubuntu-latest
+    outputs:
+      spec_file: ${{ steps.find_spec.outputs.spec_file }}
+      level: ${{ steps.find_spec.outputs.level }}
+      version: ${{ steps.find_spec.outputs.version }}
+      pr_number: ${{ github.event.number }}
     steps:
       - name: Checkout PR
         uses: actions/checkout@v4
@@ -76,7 +82,6 @@ jobs:
           VERSION="${{ steps.find_spec.outputs.version }}"
           NEXT_VERSION_FILE="specs/level_${LEVEL}/next_version"
           
-          # Fetch next_version from main branch
           git show origin/main:${NEXT_VERSION_FILE} > /tmp/next_version_from_main 2>/dev/null || {
             echo "ERROR: Could not read ${NEXT_VERSION_FILE} from main branch"
             exit 1
@@ -91,10 +96,29 @@ jobs:
           fi
           echo "Version match OK"
 
+  # ============================================================================
+  # JOB 2: Generate the HTML file using AI
+  # ============================================================================
+  generate:
+    runs-on: ubuntu-latest
+    needs: validate
+    outputs:
+      generated_file: ${{ steps.generate.outputs.generated_file }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Ensure origin/main is available
+        run: |
+          git fetch origin main
+
       - name: Copy previous version to target path
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           CANONICAL_FILE="levels/level_${LEVEL}.html"
           TARGET_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           
@@ -121,97 +145,93 @@ jobs:
           restore-keys: |
             npm-global-${{ runner.os }}-
 
-      - name: Cache agent-browser Chrome
-        id: cache_agent_browser
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/agent-browser
-          key: agent-browser-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-          restore-keys: |
-            agent-browser-${{ runner.os }}-
-
       - name: Install opencode
         if: steps.cache_npm_global.outputs.cache-hit != 'true'
         run: |
-          echo "Installing opencode via npm..."
           npm install -g opencode-ai
           which opencode
           opencode --version
-          echo "opencode installed successfully"
 
       - name: Verify opencode
         if: steps.cache_npm_global.outputs.cache-hit == 'true'
         run: |
-          which opencode || { echo "opencode not found in cache, installing..."; npm install -g opencode-ai; }
+          which opencode || { npm install -g opencode-ai; }
           opencode --version
-
-      - name: Install agent-browser
-        if: steps.cache_npm_global.outputs.cache-hit != 'true'
-        run: |
-          echo "Installing agent-browser via npm..."
-          npm install -g agent-browser
-          which agent-browser
-          agent-browser --version
-          echo "agent-browser installed successfully"
-
-      - name: Verify agent-browser
-        if: steps.cache_npm_global.outputs.cache-hit == 'true'
-        run: |
-          which agent-browser || { echo "agent-browser not found in cache, installing..."; npm install -g agent-browser; }
-          agent-browser --version
-
-      - name: Install Chrome for agent-browser
-        if: steps.cache_agent_browser.outputs.cache-hit != 'true'
-        run: |
-          echo "Installing Chrome for agent-browser..."
-          agent-browser install --with-deps
-          echo "Chrome installed successfully"
-
-      - name: Verify Chrome installation
-        if: steps.cache_agent_browser.outputs.cache-hit == 'true'
-        run: |
-          agent-browser install --with-deps || echo "Chrome reinstall needed"
-          echo "Chrome verification complete"
 
       - name: Configure OpenRouter provider
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          echo "Configuring OpenRouter provider..."
-          # Write auth file directly for non-interactive CI
           mkdir -p ~/.local/share/opencode
           printf '{"openrouter":{"type":"api","key":"%s"}}\n' "${OPENROUTER_API_KEY}" > ~/.local/share/opencode/auth.json
-          echo "Provider configured"
-          # Verify provider is set up
           opencode providers list
 
       - name: Generate new version with AI
+        id: generate
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TARGET_FILE: "levels/level_${{ steps.find_spec.outputs.level }}_v${{ steps.find_spec.outputs.version }}.html"
-          SPEC_FILE: "${{ steps.find_spec.outputs.spec_file }}"
+          TARGET_FILE: "levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html"
+          SPEC_FILE: "${{ needs.validate.outputs.spec_file }}"
         run: |
           echo "================================"
           echo "AI GENERATION STEP"
           echo "================================"
-          echo ""
-          echo "Invoking juice-man-generate skill..."
           echo "TARGET_FILE: $TARGET_FILE"
           echo "SPEC_FILE: $SPEC_FILE"
-          echo ""
           
-          # Run opencode with skill invocation
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
             -m openrouter/qwen/qwen3.6-plus \
-            --title "Generate JUICE-MAN v${{ steps.find_spec.outputs.version }}" \
+            --title "Generate JUICE-MAN v${{ needs.validate.outputs.version }}" \
             <<< "/juice-man-generate"
+          
+          echo "generated_file=$TARGET_FILE" >> $GITHUB_OUTPUT
           echo "Generation complete"
 
       - name: Verify generated file
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          GENERATED_FILE="${{ steps.generate.outputs.generated_file }}"
+          if [ -f "$GENERATED_FILE" ]; then
+            echo "Generated file exists: $GENERATED_FILE"
+            wc -l "$GENERATED_FILE"
+          else
+            echo "ERROR: Generated file not found: $GENERATED_FILE"
+            exit 1
+          fi
+
+      - name: Upload generated artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-html
+          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html
+          retention-days: 1
+
+  # ============================================================================
+  # JOB 3: Test the generated file (browser validation)
+  # ============================================================================
+  test:
+    runs-on: ubuntu-latest
+    needs: [validate, generate]
+    outputs:
+      error_count: ${{ steps.browser_test.outputs.error_count }}
+      error_count_after_fix: ${{ steps.browser_test_2.outputs.error_count }}
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Download generated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: generated-html
+          path: levels/
+
+      - name: Verify generated file
+        run: |
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           
           if [ -f "$OUTPUT_FILE" ]; then
@@ -219,13 +239,14 @@ jobs:
             wc -l "$OUTPUT_FILE"
           else
             echo "ERROR: Generated file not found: $OUTPUT_FILE"
+            ls -la levels/
             exit 1
           fi
 
       - name: Verify generated JavaScript syntax
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
 
           echo "Checking JavaScript syntax in $OUTPUT_FILE..."
@@ -240,11 +261,68 @@ jobs:
           }
           echo "JavaScript syntax OK"
 
+      - name: Get npm global prefix
+        id: npm_prefix
+        run: |
+          echo "prefix=$(npm prefix -g)" >> $GITHUB_OUTPUT
+
+      - name: Cache npm global packages
+        id: cache_npm_global
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.npm_prefix.outputs.prefix }}/lib/node_modules
+          key: npm-global-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}-opencode-agent-browser
+          restore-keys: |
+            npm-global-${{ runner.os }}-
+
+      - name: Cache agent-browser Chrome
+        id: cache_agent_browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/agent-browser
+          key: agent-browser-${{ runner.os }}-${{ hashFiles('**/package-lock.json', '**/package.json') }}
+          restore-keys: |
+            agent-browser-${{ runner.os }}-
+
+      - name: Install agent-browser and opencode
+        if: steps.cache_npm_global.outputs.cache-hit != 'true'
+        run: |
+          npm install -g agent-browser opencode-ai
+          which agent-browser
+          agent-browser --version
+          which opencode
+          opencode --version
+
+      - name: Verify agent-browser and opencode
+        if: steps.cache_npm_global.outputs.cache-hit == 'true'
+        run: |
+          which agent-browser || { npm install -g agent-browser; }
+          agent-browser --version
+          which opencode || { npm install -g opencode-ai; }
+          opencode --version
+
+      - name: Install Chrome for agent-browser
+        if: steps.cache_agent_browser.outputs.cache-hit != 'true'
+        run: |
+          agent-browser install --with-deps
+
+      - name: Verify Chrome installation
+        if: steps.cache_agent_browser.outputs.cache-hit == 'true'
+        run: |
+          agent-browser install --with-deps || echo "Chrome reinstall needed"
+
+      - name: Configure OpenRouter provider
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          mkdir -p ~/.local/share/opencode
+          printf '{"openrouter":{"type":"api","key":"%s"}}\n' "${OPENROUTER_API_KEY}" > ~/.local/share/opencode/auth.json
+
       - name: Browser test and validate
         id: browser_test
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
           PREFIX="level_${LEVEL}_v${VERSION}"
@@ -286,26 +364,34 @@ jobs:
       - name: Upload screenshot artifact
         uses: actions/upload-artifact@v4
         with:
-          name: screenshot-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
-          path: ${{ steps.browser_test.outputs.screenshot_path }}
-          retention-days: 30
+          name: screenshot
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.png
+          retention-days: 1
 
       - name: Upload video artifact
         uses: actions/upload-artifact@v4
         with:
-          name: video-level-${{ steps.find_spec.outputs.level }}-v${{ steps.find_spec.outputs.version }}
-          path: ${{ steps.browser_test.outputs.video_path }}
-          retention-days: 30
+          name: video
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.webm
+          retention-days: 1
+
+      - name: Upload error log artifact
+        if: steps.browser_test.outputs.error_count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-log
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}-errors.txt
+          retention-days: 1
 
       - name: Fix JavaScript errors with AI
         if: steps.browser_test.outputs.error_count > 0
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          ERROR_LOG="${{ steps.browser_test.outputs.error_log }}"
+          ERROR_LOG="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}-errors.txt"
           
           echo "================================"
           echo "ERROR FIXING STEP"
@@ -316,13 +402,8 @@ jobs:
           cat "$ERROR_LOG"
           echo ""
           
-          # Run opencode with skill invocation for error fixing
           export OUTPUT_FILE="${OUTPUT_FILE}"
           export ERROR_LOG="${ERROR_LOG}"
-          
-          echo "Invoking juice-man-fix skill..."
-          echo "OUTPUT_FILE: $OUTPUT_FILE"
-          echo "ERROR_LOG: $ERROR_LOG"
           
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
@@ -335,8 +416,8 @@ jobs:
         if: steps.browser_test.outputs.error_count > 0
         id: browser_test_2
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
           PREFIX="level_${LEVEL}_v${VERSION}"
@@ -372,146 +453,123 @@ jobs:
           
           agent-browser close
 
-      - name: Commit generated file, screenshot, and video to PR branch
-        id: commit_push
+      - name: Upload fixed screenshot artifact
+        if: steps.browser_test.outputs.error_count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.png
+          retention-days: 1
+          overwrite: true
+
+      - name: Upload fixed video artifact
+        if: steps.browser_test.outputs.error_count > 0
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.webm
+          retention-days: 1
+          overwrite: true
+
+      - name: Upload tested HTML artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-html
+          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html
+          retention-days: 1
+          overwrite: true
+
+  # ============================================================================
+  # JOB 4: Commit generated files to main branch
+  # ============================================================================
+  commit:
+    runs-on: ubuntu-latest
+    needs: [validate, test]
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Copy files with PR suffix
+        run: |
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
+          PR_NUMBER="${{ github.event.number }}"
+          
+          # Create directories
+          mkdir -p "levels"
+          mkdir -p "screenshots/level_${LEVEL}"
+          
+          # Copy HTML file with PR suffix
+          SRC_HTML="artifacts/level_${LEVEL}_v${VERSION}.html"
+          DEST_HTML="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
+          
+          if [ -f "$SRC_HTML" ]; then
+            cp "$SRC_HTML" "$DEST_HTML"
+            echo "Copied HTML: $DEST_HTML"
+          else
+            echo "ERROR: HTML artifact not found at $SRC_HTML"
+            ls -la artifacts/
+            exit 1
+          fi
+          
+          # Copy screenshot with PR suffix
+          SRC_SCREENSHOT="artifacts/level_${LEVEL}_v${VERSION}.png"
+          DEST_SCREENSHOT="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png"
+          
+          if [ -f "$SRC_SCREENSHOT" ]; then
+            cp "$SRC_SCREENSHOT" "$DEST_SCREENSHOT"
+            echo "Copied screenshot: $DEST_SCREENSHOT"
+          else
+            echo "WARNING: Screenshot artifact not found at $SRC_SCREENSHOT"
+          fi
+          
+          # Copy video with PR suffix
+          SRC_VIDEO="artifacts/level_${LEVEL}_v${VERSION}.webm"
+          DEST_VIDEO="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm"
+          
+          if [ -f "$SRC_VIDEO" ]; then
+            cp "$SRC_VIDEO" "$DEST_VIDEO"
+            echo "Copied video: $DEST_VIDEO"
+          else
+            echo "WARNING: Video artifact not found at $SRC_VIDEO"
+          fi
+
+      - name: Commit generated files to main
         run: |
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
-
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          PREFIX="level_${LEVEL}_v${VERSION}"
-          SCREENSHOT_PATH="${SCREENSHOT_DIR}/${PREFIX}.png"
-          VIDEO_PATH="${SCREENSHOT_DIR}/${PREFIX}.webm"
-
-          git add "$OUTPUT_FILE"
-
-          # Also add screenshot and video if they exist
-          if [ -f "$SCREENSHOT_PATH" ]; then
-            git add "$SCREENSHOT_PATH"
-          fi
-          if [ -f "$VIDEO_PATH" ]; then
-            git add "$VIDEO_PATH"
-          fi
+          
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
+          PR_NUMBER="${{ github.event.number }}"
+          
+          git add "levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
+          git add "screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png" 2>/dev/null || true
+          git add "screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm" 2>/dev/null || true
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
-            echo "pushed=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
-          
-          # Create a local branch (we're in detached HEAD with pull_request_target)
-          git checkout -b "tmp-generated-branch"
-          
-          # Check if PR is from a fork
-          HEAD_REPO="${{ github.event.pull_request.head.repo.full_name }}"
-          BASE_REPO="${{ github.repository }}"
-          
-          if [ "$HEAD_REPO" == "$BASE_REPO" ]; then
-            # Same repo PR - push directly to PR branch
-            git push -f origin "tmp-generated-branch:refs/heads/${{ github.head_ref }}"
-            echo "Pushed to PR branch: ${{ github.head_ref }}"
-            echo "pushed=true" >> $GITHUB_OUTPUT
-            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
           else
-            # Fork PR - push to base repo with descriptive branch name
-            AUTO_BRANCH="auto-generate-level-${LEVEL}-v${VERSION}"
-            git push -f origin "tmp-generated-branch:refs/heads/$AUTO_BRANCH"
-            echo "PR is from fork ($HEAD_REPO)"
-            echo "Pushed to branch: $AUTO_BRANCH in base repo"
-            echo "pushed=true" >> $GITHUB_OUTPUT
-            echo "branch=$AUTO_BRANCH" >> $GITHUB_OUTPUT
-            echo "is_fork=true" >> $GITHUB_OUTPUT
+            git commit -m "Generate level ${LEVEL} v${VERSION} preview for PR #${PR_NUMBER}"
+            git push origin main
+            echo "Committed and pushed to main"
           fi
-
-      - name: Upload screenshot and video to PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            const level = '${{ steps.find_spec.outputs.level }}';
-            const version = '${{ steps.find_spec.outputs.version }}';
-
-            const repo = context.repo.repo;
-            const owner = context.repo.owner;
-            const branch = context.payload.pull_request.head.ref;
-
-            const screenshotUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.png?raw=true`;
-            const videoUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.webm?raw=true`;
-
-            const errorCount = '${{ steps.browser_test.outputs.error_count }}';
-            const fixedErrorCount = '${{ steps.browser_test_2.outputs.error_count }}';
-
-            let statusText = '';
-            if (fixedErrorCount && fixedErrorCount !== '') {
-              if (parseInt(fixedErrorCount) === 0) {
-                statusText = '✅ All JavaScript errors were fixed automatically';
-              } else {
-                statusText = `⚠️ ${fixedErrorCount} JavaScript errors remain after auto-fix attempt`;
-              }
-            } else if (parseInt(errorCount) === 0) {
-              statusText = '✅ No JavaScript errors detected';
-            } else {
-              statusText = `⚠️ ${errorCount} JavaScript errors detected (fix attempt made)`;
-            }
-
-            // Create or update comment with screenshot
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: prNumber
-            });
-
-            const screenshotComment = comments.find(c => c.user.login === 'github-actions[bot]' && c.body.includes('Browser Test Screenshot'));
-
-            const body = `## 🖼️ Browser Test Screenshot
-
-            Level: **${level}** | Version: **v${version}**
-
-            ### Screenshot
-            ![JUICE-MAN Screenshot](${screenshotUrl})
-
-            ### Video
-            [Watch gameplay video](${videoUrl})
-
-            ### JavaScript Validation
-            ${statusText}
-            
-            ---
-            *Screenshot taken after pressing space to start the game.*`;
-            
-            if (screenshotComment) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: screenshotComment.id,
-                body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: prNumber,
-                body
-              });
-            }
 
       - name: Update previews manifest
         run: |
-          LEVEL="${{ steps.find_spec.outputs.level }}"
-          VERSION="${{ steps.find_spec.outputs.version }}"
+          LEVEL="${{ needs.validate.outputs.level }}"
+          VERSION="${{ needs.validate.outputs.version }}"
           PR_NUMBER="${{ github.event.number }}"
-          PUSHED="${{ steps.commit_push.outputs.pushed }}"
-          BRANCH="${{ steps.commit_push.outputs.branch }}"
-          
-          if [ "$PUSHED" != "true" ] || [ -z "$BRANCH" ]; then
-            echo "No files were committed, skipping manifest update"
-            exit 0
-          fi
           
           MANIFEST_FILE="previews.json"
           
@@ -522,7 +580,7 @@ jobs:
             echo '[]' > /tmp/previews_manifest.json
           fi
           
-          # Use Node.js to update JSON (available in ubuntu-latest)
+          # Use Node.js to update JSON
           node -e "
             const fs = require('fs');
             const manifest = JSON.parse(fs.readFileSync('/tmp/previews_manifest.json', 'utf8'));
@@ -534,7 +592,7 @@ jobs:
               level: ${LEVEL},
               version: ${VERSION},
               title: 'PR #' + prNumber + ' - Level ' + ${LEVEL} + ' v' + ${VERSION},
-              preview_url: 'https://htmlpreview.github.io/?https://github.com/${{ github.repository }}/blob/${BRANCH}/levels/level_${LEVEL}_v${VERSION}.html',
+              preview_url: 'https://brycecovert.github.io/JUICE-MAN/levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html',
               status: 'generated',
               updated_at: new Date().toISOString()
             };
@@ -557,7 +615,7 @@ jobs:
             echo "No manifest changes"
           else
             git commit -m "Update previews manifest for PR #${PR_NUMBER}" --no-verify
-            git push origin HEAD:refs/heads/$BRANCH
+            git push origin main
           fi
 
       - name: Comment on PR
@@ -565,29 +623,52 @@ jobs:
         with:
           script: |
             const prNumber = context.issue.number;
-            const level = '${{ steps.find_spec.outputs.level }}';
-            const version = '${{ steps.find_spec.outputs.version }}';
+            const level = '${{ needs.validate.outputs.level }}';
+            const version = '${{ needs.validate.outputs.version }}';
             const repo = context.repo.repo;
             const owner = context.repo.owner;
-            const branch = context.payload.pull_request.head.ref;
             
-            const generatedFile = `levels/level_${level}_v${version}.html`;
-            const previewUrl = `https://htmlpreview.github.io/?https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile}`;
+            const generatedFile = `levels/level_${level}_v${version}_pr${prNumber}.html`;
+            const pagesUrl = `https://${owner}.github.io/${repo}/${generatedFile}`;
+            const screenshotUrl = `https://${owner}.github.io/${repo}/screenshots/level_${level}/level_${level}_v${version}_pr${prNumber}.png`;
+            const videoUrl = `https://${owner}.github.io/${repo}/screenshots/level_${level}/level_${level}_v${version}_pr${prNumber}.webm`;
             const diffUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files`;
+            
+            const errorCount = '${{ needs.test.outputs.error_count }}';
+            const fixedErrorCount = '${{ needs.test.outputs.error_count_after_fix }}';
+            
+            let statusText = '';
+            if (fixedErrorCount && fixedErrorCount !== '') {
+              if (parseInt(fixedErrorCount) === 0) {
+                statusText = '✅ All JavaScript errors were fixed automatically';
+              } else {
+                statusText = `⚠️ ${fixedErrorCount} JavaScript errors remain after auto-fix attempt`;
+              }
+            } else if (parseInt(errorCount) === 0) {
+              statusText = '✅ No JavaScript errors detected';
+            } else {
+              statusText = `⚠️ ${errorCount} JavaScript errors detected (fix attempt made)`;
+            }
             
             const body = `## 🤖 JUICE-MAN Version Generated
             
-            Level: **${level}** | Version: **v${version}**
+            Level: **${level}** | Version: **v${version}** | PR: **#${prNumber}**
             
             ### Files
-            - Generated: [\`${generatedFile}\`](https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile})
+            - Generated: [\`${generatedFile}\`](https://github.com/${owner}/${repo}/blob/main/${generatedFile})
             - Diff: [View changes](${diffUrl})
             
             ### Preview
-            - [Play generated version](${previewUrl}) (via HTMLPreview)
+            - [Play generated version](${pagesUrl}) (via GitHub Pages)
             
-            ### Status
-            ✅ Generation successful
+            ### Screenshot
+            ![JUICE-MAN Screenshot](${screenshotUrl})
+            
+            ### Video
+            [Watch gameplay video](${videoUrl})
+            
+            ### JavaScript Validation
+            ${statusText}
             
             ---
             *This comment will be updated on each push.*`;
@@ -616,5 +697,3 @@ jobs:
                 body
               });
             }
-
-

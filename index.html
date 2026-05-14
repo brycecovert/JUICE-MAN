@@ -1457,13 +1457,13 @@ function createNextVersionCard(level, nextVersion, prs) {
       eyeBtn.onclick = () => {
         placeholder.style.display = 'none';
         video.style.display = 'block';
-        video.src = `https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/screenshots/level_${level}/level_${level}_v${nextVersion}.webm?raw=true`;
+        video.src = `https://${REPO_OWNER}.github.io/${REPO_NAME}/screenshots/level_${level}/level_${level}_v${nextVersion}_pr${pr.number}.webm`;
         video.play();
       };
       btnRow.appendChild(eyeBtn);
 
       // Play button — opens game in htmlpreview
-      const playUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${pr.head.ref}/levels/level_${level}_v${nextVersion}.html`;
+      const playUrl = `https://${REPO_OWNER}.github.io/${REPO_NAME}/levels/level_${level}_v${nextVersion}_pr${pr.number}.html`;
       const playBtn = document.createElement('a');
       playBtn.href = playUrl;
       playBtn.target = '_blank';
@@ -1509,8 +1509,8 @@ function createVersionCard(version, file, isLatest, level) {
   header.appendChild(status);
   card.appendChild(header);
 
-  // Build htmlpreview play URL
-  const playUrl = `https://htmlpreview.github.io/?https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/main/${file}`;
+  // Build GitHub Pages play URL
+  const playUrl = `https://${REPO_OWNER}.github.io/${REPO_NAME}/${file}`;
 
   // Preview with animated webm or placeholder
   const preview = document.createElement('div');
