@@ -28,8 +28,6 @@ const GHOST_COLORS=['#ff0000','#ffb8ff','#00ffff','#ffb852'];
 const POWER_DURATION=5600,POWER_WARN=2000;
 const COMBO_WINDOW=2400;
 const BASE_SPEED=3.45,SPEED_INC=0.15;
-const GHOST_SPEED_BOOST=1.25;
-const GHOST_PREDICT_AHEAD=5;
 const GHOST_SPEED_RATIO=0.88;
 const GHOST_EXIT_DELAYS=[0,1500,3000,4500];
 const FRUIT_DURATION=10000;
@@ -88,16 +86,19 @@ let collapseRebuildDelay=0;
 let shakeTimer=0;
 let shakeIntensity=0;
 let ghostFadeOut=0;
-let pinataShake=0;
-let pinataShakeIntensity=0;
-let confettiCannonTimer=0;
-
-const MAX_STREAMERS=80;
-const MAX_GLITTER=400;
-const MAX_CANDY=200;
 let streamerParts=[];
 let glitterParts=[];
 let candyParts=[];
+let confettiCannonParts=[];
+let discoBeams=[];
+let chromaticWaves=[];
+let pinataShake={active:false,intensity:0,duration:0};
+const MAX_STREAMERS=80;
+const MAX_GLITTER=400;
+const MAX_CANDY=200;
+const MAX_CONFETTI_CANNON=150;
+const MAX_DISCO_BEAMS=60;
+let confettiCannonTimer=0;
 
 /* resize */
 function resize(){
@@ -198,8 +199,7 @@ function collect(gx,gy){
     maze[gy][gx]=T_PATH;pelletCount--;score+=10;
     combo++;comboTime=COMBO_WINDOW;
     const bonus=Math.min(combo,10)*5;score+=bonus;
-    const cx2=tx(gx)+ts/2,cy2=ty(gy)+ts/2;
-    spawnCandyBurst(cx2,cy2);
+    spawnCandyBurst(cx,cy);
     if(pelletCount<=0) state='levelComplete';
   }
   if(cell===T_POWER){
@@ -217,7 +217,7 @@ function collect(gx,gy){
 /* ghosts */
 function createGhost(i){
   return{gx:10,gy:10,x:10,y:10,dir:{x:0,y:0},
-    spd:(BASE_SPEED+level*SPEED_INC)*GHOST_SPEED_RATIO,
+    spd:(BASE_SPEED+level*SPEED_INC)*GHOST_SPEED_RATIO*1.25,
     moving:false,prog:0,inHouse:true,
     hTimer:GHOST_EXIT_DELAYS[i],
     hY:9.5+((i%2===0)?0:0.6),
@@ -229,16 +229,15 @@ function ghostTarget(g){
   if(g.eaten) return{x:10,y:11};
   if(g.scared) return{x:Math.random()*COLS|0,y:Math.random()*ROWS|0};
   const px=pm.gx,py=pm.gy,dx=pm.dir.x,dy=pm.dir.y;
-  const predictX=px+dx*GHOST_PREDICT_AHEAD;
-  const predictY=py+dy*GHOST_PREDICT_AHEAD;
+  const predX=px+dx*5,predY=py+dy*5;
   switch(g.idx){
-    case 0:return{x:predictX,y:predictY};
-    case 1:return{x:predictX+dx*4,y:predictY+dy*4};
-    case 2:{const b=ghosts[0];return{x:predictX+(predictX-b.gx)*2,y:predictY+(predictY-b.gy)*2};}
-    case 3:{const d=Math.abs(g.gx-predictX)+Math.abs(g.gy-predictY);
-      return d>8?{x:predictX,y:predictY}:{x:1,y:ROWS-2};}
+    case 0:return{x:predX,y:predY};
+    case 1:return{x:predX+dx*4,y:predY+dy*4};
+    case 2:{const b=ghosts[0];return{x:predX+(predX-b.gx)*2,y:predY+(predY-b.gy)*2};}
+    case 3:{const d=Math.abs(g.gx-predX)+Math.abs(g.gy-predY);
+      return d>8?{x:predX,y:predY}:{x:1,y:ROWS-2};}
   }
-  return{x:predictX,y:predictY};
+  return{x:predX,y:predY};
 }
 function chooseDir(g){
   const tgt=ghostTarget(g);
@@ -278,7 +277,7 @@ function updGhost(g,d){
     }
     return;
   }
-  const spd=g.spd*ts*d*(g.scared?0.55:1)*(g.eaten?2.2:1)*GHOST_SPEED_BOOST;
+  const spd=g.spd*ts*d*(g.scared?0.55:1)*(g.eaten?2.2:1);
   if(!g.moving){
     if(g.eaten&&g.gx===10&&g.gy===11){
       g.eaten=false;g.scared=false;g.inHouse=true;g.hTimer=1200;
@@ -324,8 +323,9 @@ function collisions(){
         score+=pts[Math.min(ghostChain-1,3)];
         const gx2=tx(g.x)+ts/2,gy2=ty(g.y)+ts/2;
         spawnConfetti(gx2,gy2);
-        triggerPinataShake();
-        triggerPinataShake();
+        pinataShake.active=true;
+        pinataShake.intensity=3+ghostChain*2;
+        pinataShake.duration=0.4;
       }else if(!g.eaten){
         lifeLost();return;
       }
@@ -522,6 +522,7 @@ function startGame(){
   initMaze();pm=createPM();ghosts=[];
   for(let i=0;i<4;i++) ghosts[i]=createGhost(i);
   fruit=null;fruitSpawned=false;fruitTime=0;state='playing';
+  initStreamers();
 }
 function nextLevel(){
   window.location.href='level_2.html';
@@ -621,52 +622,14 @@ function drawPM(){
   const p=pm,cx=tx(p.x)+ts/2,cy=ty(p.y)+ts/2,r=ts*0.44;
   const angle=Math.atan2(p.dir.y,p.dir.x);
   if(powerOn){
-    const wobble=Math.sin(globalTime*10)*2;
-    const layers=[
-      {col:'#ff0000',ox:-8+wobble,oy:-wobble},
-      {col:'#0000ff',ox:8-wobble,oy:wobble},
-      {col:'#00ffff',ox:-4,oy:4},
-      {col:'#00ff00',ox:4,oy:-4}
-    ];
-    for(const l of layers){
-      ctx.fillStyle=l.col;
-      ctx.globalAlpha=0.5;
+    const wobble=Math.sin(globalTime*20)*2;
+    const offsets=[{dx:-8,dy:wobble,col:'rgba(255,0,0,0.5)'},{dx:8,dy:-wobble,col:'rgba(0,0,255,0.5)'},{dx:-4,dy:wobble*0.5,col:'rgba(0,255,255,0.4)'},{dx:4,dy:-wobble*0.5,col:'rgba(0,255,0,0.3)'}];
+    for(const o of offsets){
+      ctx.fillStyle=o.col;
       ctx.beginPath();
-      ctx.arc(cx+l.ox,cy+l.oy,r,angle+p.mouth,angle+Math.PI*2-p.mouth);
-      ctx.lineTo(cx+l.ox,cy+l.oy);ctx.closePath();ctx.fill();
+      ctx.arc(cx+o.dx,cy+o.dy,r,angle+p.mouth,angle+Math.PI*2-p.mouth);
+      ctx.lineTo(cx+o.dx,cy+o.dy);ctx.closePath();ctx.fill();
     }
-    ctx.globalAlpha=1;
-  }
-  ctx.fillStyle=powerOn?'#ffffff':'#ffff00';
-  ctx.beginPath();
-  ctx.arc(cx,cy,r,angle+p.mouth,angle+Math.PI*2-p.mouth);
-  ctx.lineTo(cx,cy);ctx.closePath();ctx.fill();
-  if(powerOn){
-    const eyeOffX=Math.cos(angle)*r*0.35;
-    const eyeOffY=Math.sin(angle)*r*0.35;
-    const eyeX=cx+eyeOffX;
-    const eyeY=cy+eyeOffY;
-    const eyeR=r*0.22;
-    ctx.fillStyle='#fff';
-    ctx.beginPath();ctx.arc(eyeX,eyeY,eyeR,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#ff0000';
-    ctx.beginPath();ctx.arc(eyeX,eyeY,eyeR*0.7,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle='#000';
-    ctx.beginPath();ctx.arc(eyeX+Math.cos(angle)*eyeR*0.2,eyeY+Math.sin(angle)*eyeR*0.2,eyeR*0.35,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#000';
-    ctx.lineWidth=2.5;
-    ctx.beginPath();
-    const browStartX=eyeX-Math.cos(angle)*eyeR*1.2+Math.sin(angle)*eyeR*0.3;
-    const browStartY=eyeY-Math.sin(angle)*eyeR*1.2-Math.cos(angle)*eyeR*0.5;
-    const browEndX=eyeX+Math.cos(angle)*eyeR*1.2-Math.sin(angle)*eyeR*0.3;
-    const browEndY=eyeY+Math.sin(angle)*eyeR*1.2+Math.cos(angle)*eyeR*0.1;
-    ctx.moveTo(browStartX,browStartY);
-    ctx.lineTo(browEndX,browEndY);
-    ctx.stroke();
-  }else{
-    ctx.fillStyle='#000';
-    const ex=cx+Math.cos(angle-0.8)*r*0.4,ey=cy+Math.sin(angle-0.8)*r*0.4;
-    ctx.beginPath();ctx.arc(ex,ey,r*0.08,0,Math.PI*2);ctx.fill();
   }
 }
 function drawGhost(g){
@@ -687,7 +650,6 @@ function drawGhost(g){
     ctx.lineTo(bx-r*0.2,by);ctx.lineTo(bx-r*0.4,by+r*0.05);
   }
   ctx.closePath();ctx.fill();
-  drawDiscoGhost(g,cx,cy-r*0.1,r*0.85);
   if(g.scared){
     const fl=powerTime<POWER_WARN&&Math.sin(Date.now()*0.01)>0;
     ctx.fillStyle=fl?'#f00':'#fff';
@@ -801,264 +763,6 @@ function drawConfetti(){
     ctx.fillStyle=`hsla(${c.hue},100%,65%,${c.life})`;
     ctx.fillRect(-c.w/2,-c.h/2,c.w,c.h);
     ctx.restore();
-  }
-}
-
-const CORNER_STREAMERS=[{gx:1,gy:1},{gx:19,gy:1},{gx:1,gy:19},{gx:19,gy:19}];
-function updStreamers(d){
-  if(state!=='playing') return;
-  for(const cs of CORNER_STREAMERS){
-    if(streamerParts.length<MAX_STREAMERS){
-      const sx=tx(cs.gx)+ts/2,sy=ty(cs.gy)+ts/2;
-      streamerParts.push({
-        x:sx,y:sy,
-        baseX:sx,baseY:sy,
-        life:1.0,
-        hue:(globalTime*60+cs.gx*90+cs.gy*45)%360,
-        phase:Math.random()*Math.PI*2,
-        speed:0.8+Math.random()*0.4,
-        amp:15+Math.random()*20,
-        len:2+Math.floor(Math.random()*3)
-      });
-    }
-  }
-  for(let i=streamerParts.length-1;i>=0;i--){
-    const s=streamerParts[i];
-    s.life-=d*0.35;
-    if(s.life<=0){streamerParts.splice(i,1);continue;}
-    s.x=s.baseX+Math.sin(globalTime*s.speed*3+s.phase)*s.amp;
-    s.y=s.baseY+Math.cos(globalTime*s.speed*2.3+s.phase*1.3)*s.amp*0.7;
-  }
-}
-function drawStreamers(){
-  for(const s of streamerParts){
-    ctx.save();
-    ctx.translate(s.x,s.y);
-    ctx.rotate(globalTime*2+s.phase);
-    ctx.strokeStyle=`hsla(${s.hue},100%,65%,${s.life*0.8})`;
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    for(let j=0;j<s.len;j++){
-      const t=j/s.len;
-      const wx=Math.sin(t*4+globalTime*5)*8*t;
-      const wy=t*25;
-      if(j===0) ctx.moveTo(wx,wy);
-      else ctx.lineTo(wx,wy);
-    }
-    ctx.stroke();
-    ctx.restore();
-  }
-}
-
-const GLITTER_COLORS=['#ffd700','#c0c0c0','#ff69b4','#00bfff'];
-function updGlitter(d){
-  if(state!=='playing') return;
-  for(let i=0;i<8&&glitterParts.length<MAX_GLITTER;i++){
-    glitterParts.push({
-      x:ox+Math.random()*COLS*ts,
-      y:oy-Math.random()*50,
-      vx:(Math.random()-0.5)*20,
-      vy:40+Math.random()*80,
-      life:1.0,
-      col:GLITTER_COLORS[Math.floor(Math.random()*GLITTER_COLORS.length)],
-      size:1+Math.random()*2,
-      sparkle:Math.random()*Math.PI*2
-    });
-  }
-  for(let i=glitterParts.length-1;i>=0;i--){
-    const g=glitterParts[i];
-    g.x+=g.vx*d;
-    g.y+=g.vy*d;
-    g.sparkle+=d*12;
-    const gx=Math.round((g.x-ox)/ts),gy=Math.round((g.y-oy)/ts);
-    if(gx>=0&&gx<COLS&&gy>=0&&gy<ROWS&&maze[gy][gx]===T_WALL){
-      g.vy*=-0.5;
-      g.vx+=(Math.random()-0.5)*30;
-      g.y=ty(gy)-2;
-    }
-    if(g.y>oy+ROWS*ts){g.life=0;}
-    g.life-=d*0.4;
-    if(g.life<=0) glitterParts.splice(i,1);
-  }
-}
-function drawGlitter(){
-  for(const g of glitterParts){
-    const sparkleAlpha=(Math.sin(g.sparkle)*0.5+0.5)*g.life;
-    ctx.fillStyle=g.col;
-    ctx.globalAlpha=sparkleAlpha;
-    ctx.beginPath();
-    ctx.arc(g.x,g.y,g.size*sparkleAlpha,0,Math.PI*2);
-    ctx.fill();
-    if(sparkleAlpha>0.5){
-      ctx.strokeStyle=g.col;
-      ctx.lineWidth=0.5;
-      ctx.beginPath();
-      ctx.moveTo(g.x-g.size*2,g.y);ctx.lineTo(g.x+g.size*2,g.y);
-      ctx.moveTo(g.x,g.y-g.size*2);ctx.lineTo(g.x,g.y+g.size*2);
-      ctx.stroke();
-    }
-  }
-  ctx.globalAlpha=1;
-}
-
-function spawnCandyBurst(x,y){
-  const count=8+Math.floor(Math.random()*5);
-  for(let i=0;i<count&&candyParts.length<MAX_CANDY;i++){
-    const angle=Math.random()*Math.PI*2;
-    const speed=60+Math.random()*120;
-    const types=['candy','lollipop','gumball'];
-    candyParts.push({
-      x:x,y:y,
-      vx:Math.cos(angle)*speed,
-      vy:Math.sin(angle)*speed,
-      life:1.0,
-      hue:Math.random()*360,
-      type:types[Math.floor(Math.random()*types.length)],
-      rot:Math.random()*Math.PI*2,
-      rotV:(Math.random()-0.5)*8,
-      size:3+Math.random()*4
-    });
-  }
-}
-function updCandy(d){
-  for(let i=candyParts.length-1;i>=0;i--){
-    const c=candyParts[i];
-    c.x+=c.vx*d;
-    c.y+=c.vy*d;
-    c.vy+=100*d;
-    c.rot+=c.rotV*d;
-    c.life-=d*1.2;
-    if(c.life<=0) candyParts.splice(i,1);
-  }
-}
-function drawCandy(){
-  for(const c of candyParts){
-    ctx.save();
-    ctx.translate(c.x,c.y);
-    ctx.rotate(c.rot);
-    ctx.globalAlpha=c.life;
-    if(c.type==='candy'){
-      ctx.fillStyle=`hsla(${c.hue},100%,60%,1)`;
-      ctx.fillRect(-c.size/2,-c.size/4,c.size,c.size/2);
-      ctx.fillStyle=`hsla(${(c.hue+180)%360},100%,70%,1)`;
-      ctx.fillRect(-c.size/2-2,-c.size/4,2,c.size/2);
-      ctx.fillRect(c.size/2,-c.size/4,2,c.size/2);
-    }else if(c.type==='lollipop'){
-      ctx.fillStyle=`hsla(${c.hue},100%,60%,1)`;
-      ctx.beginPath();ctx.arc(0,0,c.size*0.6,0,Math.PI*2);ctx.fill();
-      ctx.strokeStyle=`hsla(${(c.hue+120)%360},100%,70%,1)`;
-      ctx.lineWidth=1;
-      ctx.beginPath();ctx.arc(0,0,c.size*0.3,0,Math.PI);ctx.stroke();
-      ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
-      ctx.beginPath();ctx.moveTo(0,c.size*0.4);ctx.lineTo(0,c.size*1.2);ctx.stroke();
-    }else{
-      ctx.fillStyle=`hsla(${c.hue},100%,65%,1)`;
-      ctx.beginPath();ctx.arc(0,0,c.size*0.5,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=`hsla(${c.hue},100%,85%,0.5)`;
-      ctx.beginPath();ctx.arc(-c.size*0.15,-c.size*0.15,c.size*0.15,0,Math.PI*2);ctx.fill();
-    }
-    ctx.restore();
-  }
-  ctx.globalAlpha=1;
-}
-
-function fireConfettiCannon(){
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      if(maze[r][c]===T_WALL&&Math.random()<0.04){
-        const cx=tx(c)+ts/2,cy=ty(r)+ts/2;
-        const hasLeft=c>0&&maze[r][c-1]!==T_WALL;
-        const hasRight=c<COLS-1&&maze[r][c+1]!==T_WALL;
-        const hasTop=r>0&&maze[r-1][c]!==T_WALL;
-        const hasBottom=r<ROWS-1&&maze[r+1][c]!==T_WALL;
-        let dx=0,dy=0;
-        if(hasLeft&&!hasRight) dx=-1;
-        else if(!hasLeft&&hasRight) dx=1;
-        else if(hasTop&&!hasBottom) dy=-1;
-        else if(!hasTop&&hasBottom) dy=1;
-        else{dx=Math.random()<0.5?-1:1;dy=0;}
-        for(let i=0;i<8&&confettiParts.length<MAX_CONFETTI;i++){
-          const angle=Math.atan2(dy,dx)+(Math.random()-0.5)*Math.PI*0.8;
-          const speed=100+Math.random()*150;
-          confettiParts.push({
-            x:cx,y:cy,
-            vx:Math.cos(angle)*speed,
-            vy:Math.sin(angle)*speed,
-            life:1.0,
-            hue:Math.random()*360,
-            w:3+Math.random()*5,
-            h:2+Math.random()*4,
-            rot:Math.random()*Math.PI*2,
-            rotV:(Math.random()-0.5)*12
-          });
-        }
-      }
-    }
-  }
-}
-function updConfettiCannon(d){
-  confettiCannonTimer+=d;
-  if(confettiCannonTimer>=3&&state==='playing'){
-    confettiCannonTimer=0;
-    fireConfettiCannon();
-  }
-}
-
-function drawDiscoGhost(g,cx,cy,r){
-  const facets=6;
-  const rotSpeed=globalTime*4+g.idx*1.5;
-  for(let i=0;i<facets;i++){
-    const angle=(i/facets)*Math.PI*2+rotSpeed;
-    const nextAngle=((i+1)/facets)*Math.PI*2+rotSpeed;
-    const hue=(globalTime*120+i*60)%360;
-    ctx.fillStyle=`hsla(${hue},100%,70%,0.6)`;
-    ctx.beginPath();
-    ctx.moveTo(cx,cy);
-    ctx.lineTo(cx+Math.cos(angle)*r*0.9,cy+Math.sin(angle)*r*0.9);
-    ctx.lineTo(cx+Math.cos(nextAngle)*r*0.9,cy+Math.sin(nextAngle)*r*0.9);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle=`hsla(${(hue+60)%360},100%,80%,0.8)`;
-    ctx.lineWidth=1;
-    ctx.stroke();
-  }
-  for(let i=0;i<facets;i++){
-    const angle=(i/facets)*Math.PI*2+rotSpeed;
-    const beamLen=ts*1.5;
-    const hue=(globalTime*120+i*60+30)%360;
-    ctx.strokeStyle=`hsla(${hue},100%,80%,0.3)`;
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.moveTo(cx+Math.cos(angle)*r*0.9,cy+Math.sin(angle)*r*0.9);
-    ctx.lineTo(cx+Math.cos(angle)*beamLen,cy+Math.sin(angle)*beamLen);
-    ctx.stroke();
-  }
-}
-
-function drawChromaticFloor(){
-  if(!pm||state!=='playing') return;
-  const px=pm.gx,py=pm.gy;
-  for(let r=0;r<ROWS;r++){
-    for(let c=0;c<COLS;c++){
-      if(maze[r][c]===T_PATH||maze[r][c]===T_PELLET||maze[r][c]===T_POWER){
-        const d=Math.abs(c-px)+Math.abs(r-py);
-        const wave=Math.sin(d*0.8-globalTime*4)*0.5+0.5;
-        const hue=(globalTime*90+d*30)%360;
-        ctx.fillStyle=`hsla(${hue},100%,50%,${wave*0.15})`;
-        ctx.fillRect(tx(c)+1,ty(r)+1,ts-2,ts-2);
-      }
-    }
-  }
-}
-
-function triggerPinataShake(){
-  pinataShake=0.5;
-  pinataShakeIntensity=4+ghostChain*2;
-}
-function updPinataShake(d){
-  if(pinataShake>0){
-    pinataShake-=d*2;
-    pinataShakeIntensity*=0.95;
   }
 }
 
@@ -1246,7 +950,13 @@ function update(d){
     for(const g of ghosts) updGhost(g,d);
     updPower(d);updFruit(d);updCombo(d);collisions();
     updTrail();updShockwaves(d);updConfetti(d);
-    updStreamers(d);updGlitter(d);updCandy(d);updConfettiCannon(d);updPinataShake(d);
+    updStreamers(d);
+    spawnGlitter();updGlitter(d);
+    updCandy(d);
+    updConfettiCannon(d);updConfettiCannonParts(d);
+    updDiscoBalls(d);
+    updChromaticWaves(d);
+    updPinataShake(d);
   }
   if(state==='lifeLost'&&collapsePhase!=='idle'){
     updCollapse(d);
@@ -1258,31 +968,28 @@ function draw(){
   ctx.fillStyle='#000';ctx.fillRect(0,0,canvas.width,canvas.height);
   if(state==='title'){drawTitle();drawHUD();return;}
   ctx.save();
-  let sx=0,sy=0;
   if(shakeTimer>0){
-    sx=(Math.random()-0.5)*shakeIntensity*2;
-    sy=(Math.random()-0.5)*shakeIntensity*2;
+    const sx=(Math.random()-0.5)*shakeIntensity*2;
+    const sy=(Math.random()-0.5)*shakeIntensity*2;
+    ctx.translate(sx,sy);
   }
-  if(pinataShake>0){
-    const px2=(Math.random()-0.5)*pinataShakeIntensity*Math.sin(pinataShake*20);
-    const py2=(Math.random()-0.5)*pinataShakeIntensity*Math.cos(pinataShake*20);
-    sx+=px2;sy+=py2;
-  }
-  if(sx!==0||sy!==0) ctx.translate(sx,sy);
+  applyPinataShake();
+  drawStreamers();
+  drawChromaticWaves();
   drawMaze();
-  drawChromaticFloor();
-  drawGlitter();
   drawTrail();
   if(state==='lifeLost'&&collapsePhase!=='idle'){
     ctx.globalAlpha=1-ghostFadeOut;
   }
+  drawGlitter();
+  drawCandy();
   drawPM();
   for(const g of ghosts) drawGhost(g);
+  drawDiscoBalls();
   ctx.globalAlpha=1;
   drawShockwaves();
   drawConfetti();
-  drawCandy();
-  drawStreamers();
+  drawConfettiCannonParts();
   if(state==='lifeLost'&&collapsePhase!=='idle'){
     drawFallingBlocks();
   }
