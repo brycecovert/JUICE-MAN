@@ -24,18 +24,22 @@ jobs:
 
       - name: Ensure origin/main is available
         run: |
-          git fetch origin main --depth=1
+          git fetch origin main
           echo "origin/main is at: $(git rev-parse origin/main)"
 
       - name: Find spec file in PR
         id: find_spec
         run: |
-          # Try diff against origin/main first
-          SPEC_FILE=$(git diff --name-only origin/main...HEAD 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+          # Method 1: Check what files were added compared to main
+          SPEC_FILE=$(git diff --name-only --diff-filter=A origin/main..HEAD 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
           
-          # Fallback: search working tree for spec files
+          # Method 2: Find files in working tree that don't exist in main
           if [ -z "$SPEC_FILE" ]; then
-            SPEC_FILE=$(find specs -maxdepth 2 -name 'v*.md' 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | head -n 1)
+            echo "Diff method failed, comparing working tree against origin/main..."
+            SPEC_FILE=$(comm -23 \
+              <(find specs -maxdepth 2 -name 'v*.md' 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | sort) \
+              <(git ls-tree -r --name-only origin/main 2>/dev/null | grep -E '^specs/level_[0-9]+/v[0-9]+\.md$' | sort) \
+              | head -n 1)
           fi
           
           if [ -z "$SPEC_FILE" ]; then
