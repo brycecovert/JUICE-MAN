@@ -25,5 +25,14 @@
     "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/level-1-v3-maze-collapse/levels/level_1_v3.html",
     "status": "generated",
     "updated_at": "2026-05-13T06:13:24.240Z"
+  },
+  {
+    "pr_number": 17,
+    "level": 1,
+    "version": 4,
+    "title": "PR #17 - Level 1 v4",
+    "preview_url": "https://htmlpreview.github.io/?https://github.com/brycecovert/JUICE-MAN/blob/auto-generate-level-1-v4/levels/level_1_v4.html",
+    "status": "generated",
+    "updated_at": "2026-05-14T19:39:47.049Z"
   }
 ]
