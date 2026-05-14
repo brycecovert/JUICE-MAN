@@ -25,5 +25,14 @@
     "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v3.html",
     "status": "generated",
     "updated_at": "2026-05-13T06:13:24.240Z"
+  },
+  {
+    "pr_number": 17,
+    "level": 1,
+    "version": 4,
+    "title": "PR #17 - Level 1 v4",
+    "preview_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v4_pr17.html",
+    "status": "generated",
+    "updated_at": "2026-05-14T21:02:45.958Z"
   }
 ]
