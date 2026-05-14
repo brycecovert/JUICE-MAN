@@ -438,10 +438,12 @@ jobs:
 
             const repo = context.repo.repo;
             const owner = context.repo.owner;
-            const branch = context.payload.pull_request.head.ref;
+            const branch = '${{ steps.commit_push.outputs.branch }}';
 
-            const screenshotUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.png?raw=true`;
-            const videoUrl = `https://github.com/${owner}/${repo}/blob/${branch}/screenshots/level_${level}/level_${level}_v${version}.webm?raw=true`;
+            // Use GitHub Pages for assets to avoid 403s on raw URLs
+            const pagesBase = `https://${owner}.github.io/${repo}`;
+            const screenshotUrl = `${pagesBase}/screenshots/level_${level}/level_${level}_v${version}.png`;
+            const videoUrl = `${pagesBase}/screenshots/level_${level}/level_${level}_v${version}.webm`;
 
             const errorCount = '${{ steps.browser_test.outputs.error_count }}';
             const fixedErrorCount = '${{ steps.browser_test_2.outputs.error_count }}';
@@ -572,8 +574,12 @@ jobs:
             const branch = context.payload.pull_request.head.ref;
             
             const generatedFile = `levels/level_${level}_v${version}.html`;
-            const previewUrl = `https://htmlpreview.github.io/?https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile}`;
+            const branch = '${{ steps.commit_push.outputs.branch }}';
+            const isFork = '${{ steps.commit_push.outputs.is_fork }}' === 'true';
             const diffUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}/files`;
+            
+            // Use GitHub Pages for preview (works for main branch deployments)
+            const pagesUrl = `https://${owner}.github.io/${repo}/${generatedFile}`;
             
             const body = `## 🤖 JUICE-MAN Version Generated
             
@@ -584,7 +590,9 @@ jobs:
             - Diff: [View changes](${diffUrl})
             
             ### Preview
-            - [Play generated version](${previewUrl}) (via HTMLPreview)
+            ${isFork 
+              ? `⚠️ This PR is from a fork. [View file](https://github.com/${owner}/${repo}/blob/${branch}/${generatedFile}) and download to test locally.` 
+              : `[Play generated version](${pagesUrl}) (via GitHub Pages)`}
             
             ### Status
             ✅ Generation successful
