@@ -373,6 +373,7 @@ jobs:
           agent-browser close
 
       - name: Commit generated file, screenshot, and video to PR branch
+        id: commit_push
         run: |
           git config user.name "juice-man-bot"
           git config user.email "bot@juice-man.dev"
@@ -397,10 +398,34 @@ jobs:
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
+            echo "pushed=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
+          
+          # Create a local branch (we're in detached HEAD with pull_request_target)
+          git checkout -b "tmp-generated-branch"
+          
+          # Check if PR is from a fork
+          HEAD_REPO="${{ github.event.pull_request.head.repo.full_name }}"
+          BASE_REPO="${{ github.repository }}"
+          
+          if [ "$HEAD_REPO" == "$BASE_REPO" ]; then
+            # Same repo PR - push directly to PR branch
+            git push -f origin "tmp-generated-branch:refs/heads/${{ github.head_ref }}"
+            echo "Pushed to PR branch: ${{ github.head_ref }}"
+            echo "pushed=true" >> $GITHUB_OUTPUT
+            echo "branch=${{ github.head_ref }}" >> $GITHUB_OUTPUT
           else
-            git commit -m "Generate level ${LEVEL} v${VERSION} from spec"
-            git push -f origin HEAD:${{ github.head_ref }}
-            echo "Committed and pushed generated file and screenshot"
+            # Fork PR - push to base repo with descriptive branch name
+            AUTO_BRANCH="auto-generate-level-${LEVEL}-v${VERSION}"
+            git push -f origin "tmp-generated-branch:refs/heads/$AUTO_BRANCH"
+            echo "PR is from fork ($HEAD_REPO)"
+            echo "Pushed to branch: $AUTO_BRANCH in base repo"
+            echo "pushed=true" >> $GITHUB_OUTPUT
+            echo "branch=$AUTO_BRANCH" >> $GITHUB_OUTPUT
+            echo "is_fork=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Upload screenshot and video to PR
@@ -480,6 +505,13 @@ jobs:
           LEVEL="${{ steps.find_spec.outputs.level }}"
           VERSION="${{ steps.find_spec.outputs.version }}"
           PR_NUMBER="${{ github.event.number }}"
+          PUSHED="${{ steps.commit_push.outputs.pushed }}"
+          BRANCH="${{ steps.commit_push.outputs.branch }}"
+          
+          if [ "$PUSHED" != "true" ] || [ -z "$BRANCH" ]; then
+            echo "No files were committed, skipping manifest update"
+            exit 0
+          fi
           
           MANIFEST_FILE="previews.json"
           
@@ -502,7 +534,7 @@ jobs:
               level: ${LEVEL},
               version: ${VERSION},
               title: 'PR #' + prNumber + ' - Level ' + ${LEVEL} + ' v' + ${VERSION},
-              preview_url: 'https://htmlpreview.github.io/?https://github.com/${{ github.repository }}/blob/${{ github.head_ref }}/levels/level_${LEVEL}_v${VERSION}.html',
+              preview_url: 'https://htmlpreview.github.io/?https://github.com/${{ github.repository }}/blob/${BRANCH}/levels/level_${LEVEL}_v${VERSION}.html',
               status: 'generated',
               updated_at: new Date().toISOString()
             };
@@ -524,8 +556,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "No manifest changes"
           else
-            git commit -m "Update previews manifest for PR #${PR_NUMBER}"
-            git push origin HEAD:${{ github.head_ref }}
+            git commit -m "Update previews manifest for PR #${PR_NUMBER}" --no-verify
+            git push origin HEAD:refs/heads/$BRANCH
           fi
 
       - name: Comment on PR
