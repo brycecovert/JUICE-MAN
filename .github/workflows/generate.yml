@@ -576,6 +576,7 @@ jobs:
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
           PR_NUMBER="${{ github.event.number }}"
+          REPO="${{ github.repository }}"
           
           MANIFEST_FILE="previews.json"
           
@@ -593,13 +594,18 @@ jobs:
             const prNumber = ${PR_NUMBER};
             const existingIndex = manifest.findIndex(p => p.pr_number === prNumber);
             
+            const baseUrl = 'https://brycecovert.github.io/JUICE-MAN';
+            
             const entry = {
               pr_number: prNumber,
               level: ${LEVEL},
               version: ${VERSION},
               title: 'PR #' + prNumber + ' - Level ' + ${LEVEL} + ' v' + ${VERSION},
-              preview_url: 'https://brycecovert.github.io/JUICE-MAN/levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html',
               status: 'generated',
+              game_url: baseUrl + '/levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html',
+              screenshot_url: baseUrl + '/screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png',
+              video_url: baseUrl + '/screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm',
+              pr_url: 'https://github.com/${REPO}/pull/' + prNumber,
               updated_at: new Date().toISOString()
             };
             

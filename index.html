@@ -1331,37 +1331,22 @@ async function discoverVersions(level, currentVersion) {
   return versions;
 }
 
-async function fetchOpenPRs() {
+async function fetchPreviews() {
   try {
-    const resp = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls?state=open&per_page=50`);
+    const resp = await fetch('previews.json', { cache: 'no-store' });
     if (!resp.ok) return [];
     return await resp.json();
   } catch (e) {
-    console.error('Failed to fetch PRs:', e);
+    console.error('Failed to fetch previews:', e);
     return [];
   }
 }
 
-function getPRsForLevel(prs, level, nextVersion) {
-  // For now, show ALL open PRs since we only have Level 1 active
-  // In the future, this could check PR files to determine level
-  return prs.filter(pr => {
-    const title = pr.title.toLowerCase();
-    const branch = pr.head.ref.toLowerCase();
-    const levelStr = level.toString();
-    
-    // Check if PR is for the next version
-    const hasVersion = title.includes(`v${nextVersion}`) || branch.includes(`v${nextVersion}`);
-    const hasLevel = title.includes(`level ${levelStr}`) || title.includes(`level_${levelStr}`) || 
-                     branch.includes(`level-${levelStr}`) || branch.includes(`level_${levelStr}`) ||
-                     branch.includes(`v${nextVersion}`);
-    
-    // Also include PRs that mention the version number
-    return hasVersion || hasLevel || title.includes('juice-man');
-  });
+function getPreviewsForLevel(previews, level, nextVersion) {
+  return previews.filter(p => p.level === level && p.version === nextVersion);
 }
 
-function createNextVersionCard(level, nextVersion, prs) {
+function createNextVersionCard(level, nextVersion, previews) {
   const card = document.createElement('div');
   card.className = 'version-card next';
 
@@ -1401,13 +1386,13 @@ function createNextVersionCard(level, nextVersion, prs) {
   placeholder.innerHTML = `
     <div class="pacman-icon" style="opacity:0.5;"></div>
     <span style="color:rgba(255,255,255,0.5);">v${nextVersion} — Coming Soon</span>
-    <span style="font-size:0.6rem;color:rgba(255,255,255,0.3);margin-top:0.5rem;">${prs.length} competing PR${prs.length !== 1 ? 's' : ''}</span>
+    <span style="font-size:0.6rem;color:rgba(255,255,255,0.3);margin-top:0.5rem;">${previews.length} competing PR${previews.length !== 1 ? 's' : ''}</span>
   `;
   preview.appendChild(placeholder);
   card.appendChild(preview);
 
-  // PR list with eye + play buttons
-  if (prs.length > 0) {
+  // Preview list
+  if (previews.length > 0) {
     const prSection = document.createElement('div');
     prSection.className = 'version-prs';
 
@@ -1420,7 +1405,7 @@ function createNextVersionCard(level, nextVersion, prs) {
     const prGrid = document.createElement('div');
     prGrid.className = 'pr-mini-grid';
 
-    prs.forEach(pr => {
+    previews.forEach(p => {
       const prRow = document.createElement('div');
       prRow.style.display = 'flex';
       prRow.style.flexDirection = 'column';
@@ -1428,17 +1413,17 @@ function createNextVersionCard(level, nextVersion, prs) {
 
       const prCard = document.createElement('a');
       prCard.className = 'pr-mini-card';
-      prCard.href = pr.html_url;
+      prCard.href = p.pr_url;
       prCard.target = '_blank';
       prCard.rel = 'noopener';
 
       const prTitle = document.createElement('div');
       prTitle.className = 'pr-mini-title';
-      prTitle.textContent = pr.title;
+      prTitle.textContent = p.title;
 
       const prMeta = document.createElement('div');
       prMeta.className = 'pr-mini-meta';
-      prMeta.innerHTML = `<span>@${pr.user.login}</span><span class="pr-mini-votes">⭐ ${pr.reactions?.['+1'] || 0}</span>`;
+      prMeta.innerHTML = `<span>PR #${p.pr_number}</span>`;
 
       prCard.appendChild(prTitle);
       prCard.appendChild(prMeta);
@@ -1448,7 +1433,7 @@ function createNextVersionCard(level, nextVersion, prs) {
       btnRow.style.display = 'flex';
       btnRow.style.gap = '0.5rem';
 
-      // Eye button — swaps video src to this PR's webm
+      // Eye button — swaps video src to this preview's video
       const eyeBtn = document.createElement('button');
       eyeBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.7);font-family:var(--font-display);font-size:0.65rem;cursor:pointer;border-radius:4px;transition:all 0.2s;';
       eyeBtn.innerHTML = '👁 Preview';
@@ -1457,15 +1442,14 @@ function createNextVersionCard(level, nextVersion, prs) {
       eyeBtn.onclick = () => {
         placeholder.style.display = 'none';
         video.style.display = 'block';
-        video.src = `https://${REPO_OWNER}.github.io/${REPO_NAME}/screenshots/level_${level}/level_${level}_v${nextVersion}_pr${pr.number}.webm`;
+        video.src = p.video_url;
         video.play();
       };
       btnRow.appendChild(eyeBtn);
 
-      // Play button — opens game in htmlpreview
-      const playUrl = `https://${REPO_OWNER}.github.io/${REPO_NAME}/levels/level_${level}_v${nextVersion}_pr${pr.number}.html`;
+      // Play button
       const playBtn = document.createElement('a');
-      playBtn.href = playUrl;
+      playBtn.href = p.game_url;
       playBtn.target = '_blank';
       playBtn.rel = 'noopener';
       playBtn.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:0.4rem 0.75rem;background:rgba(255,51,102,0.15);border:1px solid rgba(255,51,102,0.3);color:#ff66aa;font-family:var(--font-display);font-size:0.65rem;text-decoration:none;border-radius:4px;transition:all 0.2s;';
@@ -1568,7 +1552,7 @@ function createVersionCard(version, file, isLatest, level) {
   return card;
 }
 
-function createLevelSection(levelData, versions, prs) {
+function createLevelSection(levelData, versions, allPreviews) {
   const section = document.createElement('div');
   section.className = 'level-section reveal';
   section.dataset.level = levelData.level;
@@ -1596,11 +1580,11 @@ function createLevelSection(levelData, versions, prs) {
   const stack = document.createElement('div');
   stack.className = 'version-stack';
 
-  // Get PRs for this level's next version
-  const levelPRs = getPRsForLevel(prs, levelData.level, levelData.nextVersion);
+  // Get previews for this level's next version
+  const levelPreviews = getPreviewsForLevel(previews, levelData.level, levelData.nextVersion);
 
   // 1. Next version card (first, leftmost)
-  const nextCard = createNextVersionCard(levelData.level, levelData.nextVersion, levelPRs);
+  const nextCard = createNextVersionCard(levelData.level, levelData.nextVersion, levelPreviews);
   stack.appendChild(nextCard);
 
   // 2. Committed versions (current and older)
@@ -1628,9 +1612,9 @@ async function renderEvolution() {
   container.innerHTML = '<div class="loading-levels">Discovering levels...</div>';
 
   try {
-    const [levels, allPRs] = await Promise.all([
+    const [levels, allPreviews] = await Promise.all([
       discoverLevels(),
-      fetchOpenPRs()
+      fetchPreviews()
     ]);
 
     if (levels.length === 0) {
@@ -1643,7 +1627,7 @@ async function renderEvolution() {
     for (const level of levels) {
       const versions = await discoverVersions(level.level, level.currentVersion);
       if (versions.length > 0) {
-        const section = createLevelSection(level, versions, allPRs);
+        const section = createLevelSection(level, versions, allPreviews);
         container.appendChild(section);
       }
     }
