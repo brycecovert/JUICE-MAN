@@ -182,7 +182,7 @@ jobs:
           
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
-            -m openrouter/qwen/qwen3.6-plus \
+            -m moonshotai/kimi-k2.6 \
             --title "Generate JUICE-MAN v${{ needs.validate.outputs.version }}" \
             <<< "/juice-man-generate"
           
@@ -412,7 +412,7 @@ jobs:
           
           OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" opencode run \
             --dangerously-skip-permissions \
-            -m openrouter/qwen/qwen3.6-plus \
+            -m moonshotai/kimi-k2.6 \
             --title "Fix JS Errors in JUICE-MAN v${VERSION}" \
             <<< "/juice-man-fix"
           echo "Error fixing complete"
