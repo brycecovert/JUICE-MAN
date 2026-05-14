@@ -119,8 +119,9 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
+          PR_NUMBER="${{ github.event.number }}"
           CANONICAL_FILE="levels/level_${LEVEL}.html"
-          TARGET_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          TARGET_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           
           if git show origin/main:${CANONICAL_FILE} > "${TARGET_FILE}" 2>/dev/null; then
             echo "Copied previous version to: ${TARGET_FILE}"
@@ -170,7 +171,7 @@ jobs:
         id: generate
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          TARGET_FILE: "levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html"
+          TARGET_FILE: "levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.html"
           SPEC_FILE: "${{ needs.validate.outputs.spec_file }}"
         run: |
           echo "================================"
@@ -203,7 +204,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-html
-          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html
+          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.html
           retention-days: 1
 
   # ============================================================================
@@ -232,7 +233,8 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          PR_NUMBER="${{ github.event.number }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           
           if [ -f "$OUTPUT_FILE" ]; then
             echo "Generated file exists: $OUTPUT_FILE"
@@ -247,7 +249,8 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          PR_NUMBER="${{ github.event.number }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
 
           echo "Checking JavaScript syntax in $OUTPUT_FILE..."
           node -e "const fs=require('fs');const js=fs.readFileSync('${OUTPUT_FILE}','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];fs.writeFileSync('/tmp/extracted.js',js);" || {
@@ -323,9 +326,10 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          PR_NUMBER="${{ github.event.number }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          PREFIX="level_${LEVEL}_v${VERSION}"
+          PREFIX="level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}"
           
           echo "================================"
           echo "BROWSER TEST STEP"
@@ -365,14 +369,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshot
-          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.png
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.png
           retention-days: 1
 
       - name: Upload video artifact
         uses: actions/upload-artifact@v4
         with:
           name: video
-          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.webm
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.webm
           retention-days: 1
 
       - name: Upload error log artifact
@@ -380,7 +384,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: error-log
-          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}-errors.txt
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}-errors.txt
           retention-days: 1
 
       - name: Fix JavaScript errors with AI
@@ -390,8 +394,9 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
-          ERROR_LOG="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}-errors.txt"
+          PR_NUMBER="${{ github.event.number }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
+          ERROR_LOG="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}-errors.txt"
           
           echo "================================"
           echo "ERROR FIXING STEP"
@@ -418,9 +423,10 @@ jobs:
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
-          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}.html"
+          PR_NUMBER="${{ github.event.number }}"
+          OUTPUT_FILE="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           SCREENSHOT_DIR="screenshots/level_${LEVEL}"
-          PREFIX="level_${LEVEL}_v${VERSION}"
+          PREFIX="level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}"
           
           echo "================================"
           echo "RE-TEST AFTER FIX"
@@ -458,7 +464,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: screenshot
-          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.png
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.png
           retention-days: 1
           overwrite: true
 
@@ -467,7 +473,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: video
-          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.webm
+          path: screenshots/level_${{ needs.validate.outputs.level }}/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.webm
           retention-days: 1
           overwrite: true
 
@@ -475,7 +481,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-html
-          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}.html
+          path: levels/level_${{ needs.validate.outputs.level }}_v${{ needs.validate.outputs.version }}_pr${{ github.event.number }}.html
           retention-days: 1
           overwrite: true
 
@@ -499,7 +505,7 @@ jobs:
           path: artifacts
           merge-multiple: true
 
-      - name: Copy files with PR suffix
+      - name: Copy artifacts to repo
         run: |
           LEVEL="${{ needs.validate.outputs.level }}"
           VERSION="${{ needs.validate.outputs.version }}"
@@ -509,8 +515,8 @@ jobs:
           mkdir -p "levels"
           mkdir -p "screenshots/level_${LEVEL}"
           
-          # Copy HTML file with PR suffix
-          SRC_HTML="artifacts/level_${LEVEL}_v${VERSION}.html"
+          # Copy HTML file (already has PR suffix in artifact name)
+          SRC_HTML="artifacts/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           DEST_HTML="levels/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.html"
           
           if [ -f "$SRC_HTML" ]; then
@@ -522,8 +528,8 @@ jobs:
             exit 1
           fi
           
-          # Copy screenshot with PR suffix
-          SRC_SCREENSHOT="artifacts/level_${LEVEL}_v${VERSION}.png"
+          # Copy screenshot (already has PR suffix in artifact name)
+          SRC_SCREENSHOT="artifacts/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png"
           DEST_SCREENSHOT="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.png"
           
           if [ -f "$SRC_SCREENSHOT" ]; then
@@ -533,8 +539,8 @@ jobs:
             echo "WARNING: Screenshot artifact not found at $SRC_SCREENSHOT"
           fi
           
-          # Copy video with PR suffix
-          SRC_VIDEO="artifacts/level_${LEVEL}_v${VERSION}.webm"
+          # Copy video (already has PR suffix in artifact name)
+          SRC_VIDEO="artifacts/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm"
           DEST_VIDEO="screenshots/level_${LEVEL}/level_${LEVEL}_v${VERSION}_pr${PR_NUMBER}.webm"
           
           if [ -f "$SRC_VIDEO" ]; then
