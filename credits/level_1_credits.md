@@ -9,3 +9,4 @@
 - Bryce — v3
 - Bryce — v4
 - Bryce — v5
+- Bryce — v6

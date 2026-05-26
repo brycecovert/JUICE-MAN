@@ -1,4 +1,6 @@
-# JUICE-|||| **v5** | Bryce | [Play](levels/level_1_v5.html) | Level 1 — v5 |
+# JUICE-||||| **v6** | Bryce | [Play](levels/level_1_v6.html) | Level 1 — v6 |
+| v6 | 2026-05-26 | Bryce | Level 1 — v6 |
+ **v5** | Bryce | [Play](levels/level_1_v5.html) | Level 1 — v5 |
 | v5 | 2026-05-18 | Bryce | Level 1 — v5 |
  **v4** | Bryce | [Play](levels/level_1_v4.html) | Level 1 — v4 |
 | v4 | 2026-05-15 | Bryce | Level 1 — v4 |
@@ -16,7 +18,7 @@ PAC-MAN's final form is coded in the latest and greatest programming language: M
 
 ## Current Status
 
-Nightly builds active. Latest: **Level 1 v5** — Level 1 — v5
+Nightly builds active. Latest: **Level 1 v6** — Level 1 — v6
 
 Open a PR with a spec to participate.
 
