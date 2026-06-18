@@ -94,5 +94,17 @@
     "video_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v8_pr23.webm",
     "pr_url": "https://github.com/brycecovert/JUICE-MAN/pull/23",
     "updated_at": "2026-06-17T18:19:30.073Z"
+  },
+  {
+    "pr_number": 24,
+    "level": 1,
+    "version": 9,
+    "title": "PR #24 - Level 1 v9",
+    "status": "generated",
+    "game_url": "https://brycecovert.github.io/JUICE-MAN/levels/level_1_v9_pr24.html",
+    "screenshot_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v9_pr24.png",
+    "video_url": "https://brycecovert.github.io/JUICE-MAN/screenshots/level_1/level_1_v9_pr24.webm",
+    "pr_url": "https://github.com/brycecovert/JUICE-MAN/pull/24",
+    "updated_at": "2026-06-18T00:48:23.173Z"
   }
 ]
